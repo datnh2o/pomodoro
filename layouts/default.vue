@@ -7,12 +7,10 @@
       <v-spacer />
       <v-menu v-if="user" bottom min-width="200px" rounded offset-y>
         <template v-slot:activator="{ on }">
-          <v-btn icon v-on="on" v-if="user">
-            <v-avatar size="36">
-              <v-img :src="user.photoURL" />
-            </v-avatar>
-          </v-btn>
-          <span class="white--text font-weight-bold">{{
+          <v-avatar v-on="on" v-if="user" size="36">
+            <v-img :src="user.photoURL" style="z-index: 10" />
+          </v-avatar>
+          <span class="white--text font-weight-bold pr-2">{{
             user.displayName
           }}</span>
         </template>
