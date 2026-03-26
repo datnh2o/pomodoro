@@ -38,6 +38,7 @@
               :item="item"
               :tasks="tasks"
               :inPomodoro="inPomodoro"
+              :isActive="tab === index"
               @timer-end="(value) => (onChangeTab(value), (inPomodoro = true))"
               @changeStatus="(value) => (inPomodoro = value)"
             ></time-left>

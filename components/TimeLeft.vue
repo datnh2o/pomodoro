@@ -48,6 +48,10 @@ export default {
       type: Boolean,
       required: true,
     },
+    isActive: {
+      type: Boolean,
+      required: true,
+    },
   },
   data() {
     return {
@@ -64,16 +68,22 @@ export default {
       this.tab = value;
     },
     inPomodoro(value) {
+      if (!this.isActive) return;
       if (value) {
         this.startTimer();
       } else {
         this.skipTimer();
       }
     },
+    isActive(value) {
+      if (!value && this.timerRunning) {
+        this.skipTimer();
+      }
+    },
   },
   created() {
     this.originalPeriodOfTime = this.tab.periodOfTime;
-    if (this.inPomodoro) {
+    if (this.inPomodoro && this.isActive) {
       this.startTimer();
     }
   },
@@ -93,11 +103,11 @@ export default {
   methods: {
     startTimer() {
       if (!this.timer) {
+        this.audioLofi.loop = true;
+        this.audioLofi.play();
         this.timer = setInterval(() => {
           if (this.tab.periodOfTime > 0) {
             this.$emit("changeStatus", true);
-            this.audioLofi.play();
-            this.audioLofi.loop = true;
             this.tab.periodOfTime--;
           } else {
             this.$emit("changeStatus", false);
