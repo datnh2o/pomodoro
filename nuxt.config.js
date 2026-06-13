@@ -1,4 +1,8 @@
 import colors from "vuetify/es5/util/colors";
+import dotenv from "dotenv";
+
+// Nuxt 2 không tự nạp .env — nạp thủ công để env block bên dưới đọc được giá trị.
+dotenv.config();
 
 export default {
   // Global page headers: https://go.nuxtjs.dev/config-head

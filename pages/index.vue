@@ -78,7 +78,7 @@
         </v-card-title>
         <v-divider dark />
         <v-card-text class="d-flex flex-column" style="gap: 8px">
-          <div v-for="(item, index) in tasks" :key="index">
+          <div v-for="item in tasks" :key="item.id">
             <task-item
               @update="updateRecord"
               @delete="deleteRecord"
@@ -111,11 +111,12 @@ import {
   deleteRecord,
   deleteCollection,
 } from "~/composables/useDatabase";
+import { auth, onAuthStateChanged } from "~/plugins/firebase.client";
 import appConfig from "~/config/app.js";
 export default {
   components: { TaskItem },
   name: "IndexPage",
-  inject: ["theme", "setTheme"],
+  inject: ["setTheme"],
   data() {
     return {
       tab: 0,
@@ -138,24 +139,37 @@ export default {
       inPomodoro: false,
     };
   },
-  async mounted() {
-    this.tasks = await getRecords(this.collection);
+  mounted() {
+    // Chỉ tải task của người dùng sau khi xác định được trạng thái đăng nhập
+    this.unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          this.tasks = await getRecords(this.collection);
+        } catch (error) {
+          console.error(error);
+        }
+      } else {
+        this.tasks = [];
+      }
+    });
+  },
+  beforeDestroy() {
+    if (this.unsubscribeAuth) this.unsubscribeAuth();
   },
   methods: {
     async createRecord(task) {
       try {
-        await addRecord(task);
+        const id = await addRecord(task);
+        this.tasks.push({ id, ...task });
       } catch (error) {
         console.error(error);
       } finally {
         this.isCreating = false;
-        this.tasks = await getRecords(this.collection);
       }
     },
     async updateRecord(task) {
-      const docId = task.id;
       try {
-        await updateRecord(this.collection, docId, {
+        await updateRecord(this.collection, task.id, {
           title: task.title,
           pomos: task.pomos,
           note: task.note,
@@ -168,19 +182,17 @@ export default {
     async deleteRecord(task) {
       try {
         await deleteRecord(this.collection, task.id);
+        this.tasks = this.tasks.filter((t) => t.id !== task.id);
       } catch (error) {
         console.error(error);
-      } finally {
-        this.tasks = await getRecords(this.collection);
       }
     },
     async clearAllTasks() {
       try {
         await deleteCollection(this.collection);
+        this.tasks = [];
       } catch (error) {
         console.error(error);
-      } finally {
-        this.tasks = await getRecords(this.collection);
       }
     },
     onChangeTab(item) {

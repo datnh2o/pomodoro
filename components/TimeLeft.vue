@@ -55,9 +55,11 @@ export default {
   },
   data() {
     return {
-      tab: this.item,
+      // Clone để không mutate object dùng chung trong appConfig
+      tab: { ...this.item },
       timer: null,
       timerRunning: false,
+      endTime: null,
       originalPeriodOfTime: null,
       audioAlert: null,
       audioLofi: null,
@@ -65,7 +67,7 @@ export default {
   },
   watch: {
     item(value) {
-      this.tab = value;
+      this.tab = { ...value };
     },
     inPomodoro(value) {
       if (!this.isActive) return;
@@ -102,27 +104,33 @@ export default {
   },
   methods: {
     startTimer() {
-      if (!this.timer) {
-        this.audioLofi.loop = true;
-        this.audioLofi.play();
-        this.timer = setInterval(() => {
-          if (this.tab.periodOfTime > 0) {
-            this.$emit("changeStatus", true);
-            this.tab.periodOfTime--;
-          } else {
-            this.$emit("changeStatus", false);
-            this.stopTimer();
-            this.audioAlert.play();
-            this.tab.periodOfTime = this.originalPeriodOfTime;
-            this.audioLofi.currentTime = 0;
-            this.$emit(
-              "timer-end",
-              this.tab.name == "Pomodoro" ? appConfig.short : appConfig.pomodoro
-            );
-          }
-        }, 1000);
-        this.timerRunning = true;
-      }
+      if (this.timer) return;
+      this.audioLofi.loop = true;
+      this.audioLofi.play().catch(() => {});
+      // Tính theo mốc thời gian kết thúc để tránh trôi (drift)
+      this.endTime = Date.now() + this.tab.periodOfTime * 1000;
+      this.timerRunning = true;
+      this.$emit("changeStatus", true);
+      this.timer = setInterval(() => {
+        const remaining = Math.round((this.endTime - Date.now()) / 1000);
+        if (remaining > 0) {
+          this.tab.periodOfTime = remaining;
+        } else {
+          this.tab.periodOfTime = 0;
+          this.handleTimerEnd();
+        }
+      }, 250);
+    },
+    handleTimerEnd() {
+      this.stopTimer();
+      this.audioAlert.play().catch(() => {});
+      this.tab.periodOfTime = this.originalPeriodOfTime;
+      this.audioLofi.currentTime = 0;
+      this.$emit("changeStatus", false);
+      this.$emit(
+        "timer-end",
+        this.tab.name == "Pomodoro" ? appConfig.short : appConfig.pomodoro
+      );
     },
     stopTimer() {
       clearInterval(this.timer);

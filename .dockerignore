@@ -1,0 +1,28 @@
+# Phụ thuộc & artifact build — cài/ build lại trong image
+node_modules
+.nuxt
+dist
+
+# Git & metadata
+.git
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE / OS
+.vscode
+.idea
+.DS_Store
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Tài liệu
+README.md
+
+# LƯU Ý: KHÔNG bỏ qua .env ở đây — Nuxt 2 nhúng giá trị env vào bundle
+# lúc `npm run build` (stage build). Image runtime cuối là multi-stage nên
+# không chứa .env.

@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// Firestore Security Rules cho Pomodoro app.
+// Triển khai: firebase deploy --only firestore:rules
+// (hoặc dán vào Firebase Console > Firestore Database > Rules)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Mỗi task chỉ thuộc về người tạo ra nó (field userId == uid).
+    match /Tasks/{taskId} {
+      allow read, delete: if request.auth != null
+                          && resource.data.userId == request.auth.uid;
+
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid;
+
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Mặc định từ chối mọi truy cập khác.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

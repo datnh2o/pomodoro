@@ -1,10 +1,35 @@
 // composables/useDatabase.ts
-import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, query, where } from "firebase/firestore";
-import { firestore } from "~/plugins/firebase.client";
+import {
+  collection,
+  addDoc,
+  doc,
+  updateDoc,
+  getDocs,
+  deleteDoc,
+  query,
+  where,
+  writeBatch,
+} from "firebase/firestore";
+import { firestore, auth } from "~/plugins/firebase.client";
+
+const COLLECTION = "Tasks";
+
+const requireUid = (): string => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) {
+    throw new Error("User is not authenticated");
+  }
+  return uid;
+};
 
 export const addRecord = async (data: Record<string, any>) => {
+  const userId = requireUid();
   try {
-    const docRef = await addDoc(collection(firestore, "Tasks"), data);
+    const docRef = await addDoc(collection(firestore, COLLECTION), {
+      ...data,
+      userId,
+      createdAt: Date.now(),
+    });
     return docRef.id;
   } catch (e) {
     console.error("Error adding document: ", e);
@@ -12,7 +37,11 @@ export const addRecord = async (data: Record<string, any>) => {
   }
 };
 
-export const updateRecord = async (collectionName: string, docId: string, data: Record<string, any>) => {
+export const updateRecord = async (
+  collectionName: string,
+  docId: string,
+  data: Record<string, any>
+) => {
   try {
     const docRef = doc(firestore, collectionName, docId);
     await updateDoc(docRef, data);
@@ -23,11 +52,16 @@ export const updateRecord = async (collectionName: string, docId: string, data: 
 };
 
 export const getRecords = async (collectionName: string) => {
+  const userId = requireUid();
   try {
-    const querySnapshot = await getDocs(collection(firestore, collectionName));
+    const q = query(
+      collection(firestore, collectionName),
+      where("userId", "==", userId)
+    );
+    const querySnapshot = await getDocs(q);
     const records: Record<string, any>[] = [];
-    querySnapshot.forEach((doc) => {
-      records.push({ id: doc.id, ...doc.data() });
+    querySnapshot.forEach((docSnap) => {
+      records.push({ id: docSnap.id, ...docSnap.data() });
     });
     return records;
   } catch (e) {
@@ -47,18 +81,23 @@ export const deleteRecord = async (collectionName: string, docId: string) => {
 };
 
 export const deleteCollection = async (collectionName: string) => {
-  // Lấy tham chiếu đến collection
-  const collectionRef = collection(firestore, collectionName);
-
+  const userId = requireUid();
   try {
-    // Lấy tất cả các document trong collection
-    const querySnapshot = await getDocs(collectionRef);
+    // Chỉ xóa các document thuộc về người dùng hiện tại
+    const q = query(
+      collection(firestore, collectionName),
+      where("userId", "==", userId)
+    );
+    const querySnapshot = await getDocs(q);
 
-    // Duyệt qua từng document và xóa
-    querySnapshot.forEach(async (docSnap) => {
-      await deleteDoc(doc(firestore, collectionName, docSnap.id));
+    // Dùng batch để xóa nguyên tử và đảm bảo chờ hoàn tất
+    const batch = writeBatch(firestore);
+    querySnapshot.forEach((docSnap) => {
+      batch.delete(doc(firestore, collectionName, docSnap.id));
     });
+    await batch.commit();
   } catch (error) {
     console.error("Error deleting documents: ", error);
+    throw error;
   }
 };

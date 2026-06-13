@@ -53,10 +53,11 @@ export default {
     submit() {
       let valid = this.$refs.form.validate();
       if (valid) {
+        const payload = { ...this.task, pomos: Number(this.task.pomos) || 1 };
         if (this.isCreating) {
-          this.$emit("create", { ...{ done: false }, ...this.task });
+          this.$emit("create", { done: false, ...payload });
         } else {
-          this.$emit("update", this.task);
+          this.$emit("update", payload);
         }
       }
     },
