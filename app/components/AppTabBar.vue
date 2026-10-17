@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const tabs = [
   { to: "/", label: "Hôm nay", icon: "i-lucide-list-checks" },
+  { to: "/journal", label: "Nhật ký", icon: "i-lucide-calendar-days" },
+  { to: "/stats", label: "Tổng hợp", icon: "i-lucide-chart-column" },
   { to: "/pomodoro", label: "Pomodoro", icon: "i-lucide-timer" },
   { to: "/settings", label: "Cài đặt", icon: "i-lucide-settings" },
 ];
@@ -16,7 +18,7 @@ const tabs = [
       <li v-for="tab in tabs" :key="tab.to" class="flex-1">
         <NuxtLink
           :to="tab.to"
-          class="flex flex-col items-center gap-0.5 py-2 text-xs text-gray-500"
+          class="flex flex-col items-center gap-0.5 py-2 text-[11px] text-gray-500"
           active-class="!text-primary font-semibold"
         >
           <UIcon :name="tab.icon" class="h-6 w-6" />

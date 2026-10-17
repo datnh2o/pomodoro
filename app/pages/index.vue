@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { MainTask, Proof, SideTask } from "~/utils/models";
-import { formatDateVi, formatMoney } from "~/utils/dates";
+import type { DayMap } from "~/composables/useHistory";
+import { STREAK_LOOKBACK_DAYS } from "~/composables/useHistory";
+import { addDays, formatDateVi, formatMoney } from "~/utils/dates";
 
 const { user } = useAuth();
 const { workspace, can } = useWorkspace();
@@ -8,7 +10,31 @@ const { ready: tasksReady, mainTasksFor, sideTasksFor, createSideTask, setSideTa
 const { today, dayDoc, isCompleted, completionOf, complete, uncomplete, closePastDays } = useDay();
 const { showError } = useErrorToast();
 const { check: checkReminders } = useReminders();
+const { fetchDays, currentStreaks } = useHistory();
+const { tasks } = useTasks();
 const toast = useToast();
+
+// Streak từng nhiệm vụ: đọc lịch sử 120 ngày gần nhất một lần, tính lại khi tích/bỏ tích
+const streakDays = ref<DayMap>({});
+const streaks = computed(() => {
+  const ws = workspace.value;
+  if (!ws) return {} as Record<string, number>;
+  const days = { ...streakDays.value };
+  if (dayDoc.value) days[today.value] = dayDoc.value;
+  return currentStreaks(tasks.value, days, ws.createdDate);
+});
+watch(
+  [tasksReady, () => workspace.value?.id, today],
+  async ([isReady, wsId, date]) => {
+    if (!isReady || !wsId) return;
+    try {
+      streakDays.value = await fetchDays(wsId, addDays(date, -STREAK_LOOKBACK_DAYS), addDays(date, -1));
+    } catch (error) {
+      console.warn("Không tải được lịch sử streak", error);
+    }
+  },
+  { immediate: true }
+);
 
 const mainToday = computed(() => mainTasksFor(today.value));
 const sideToday = computed(() => sideTasksFor(today.value));
@@ -142,6 +168,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
           :key="task.id"
           :task="task"
           :completion="completionOf(task.id)"
+          :streak="streaks[task.lineageId]"
           :can-act="can('add') && !dayDoc?.closed"
           @complete="onCompleteRequest(task)"
           @uncomplete="onUncomplete(task)"

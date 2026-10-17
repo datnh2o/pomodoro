@@ -6,6 +6,8 @@ const props = defineProps<{
   completion?: Completion;
   /** Người dùng có quyền tích/bỏ tích không */
   canAct: boolean;
+  /** Số ngày liên tiếp đã hoàn thành (không tính hôm nay nếu chưa xong) */
+  streak?: number;
 }>();
 
 const emit = defineEmits<{ complete: []; uncomplete: [] }>();
@@ -46,6 +48,9 @@ const done = computed(() => !!props.completion);
         </UBadge>
         <UBadge v-if="task.requiresProof" color="neutral" variant="subtle" size="sm" icon="i-lucide-camera">
           Cần ảnh
+        </UBadge>
+        <UBadge v-if="streak" color="error" variant="subtle" size="sm" icon="i-lucide-flame">
+          {{ streak }} ngày liên tiếp
         </UBadge>
       </div>
 
