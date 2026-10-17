@@ -85,3 +85,7 @@ sw.*
 
 # Vim swap files
 *.swp
+
+# nuxt 3/4 build output
+.output
+.data

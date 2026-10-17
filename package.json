@@ -2,26 +2,24 @@
   "name": "pomodoro-app",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "nuxt",
+    "dev": "nuxt dev",
     "build": "nuxt build",
-    "start": "nuxt start",
-    "generate": "nuxt generate"
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@vueuse/sound": "^2.1.3",
-    "core-js": "^3.25.3",
-    "dotenv": "^16.4.7",
-    "firebase": "^11.1.0",
-    "nuxt": "^2.15.8",
-    "vue": "^2.7.10",
-    "vue-server-renderer": "^2.7.10",
-    "vue-template-compiler": "^2.7.10",
-    "vuetify": "^2.6.10"
+    "@nuxt/ui": "^2.22.3",
+    "firebase": "^11.10.0",
+    "nuxt": "^4.6.2",
+    "vue": "^3.5.0",
+    "vue-router": "^5.4.0"
   },
   "devDependencies": {
-    "@nuxt/types": "^2.15.8",
-    "@nuxt/typescript-build": "^2.1.0",
-    "@nuxtjs/vuetify": "^1.12.3"
+    "typescript": "^5.9.0",
+    "vue-tsc": "^3.0.0"
   }
 }

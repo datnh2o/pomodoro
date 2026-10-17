@@ -1,68 +1,44 @@
-# pomodoro-app
+# Pomodoro Timer
 
-## Build Setup
+Ứng dụng Pomodoro kèm danh sách task, đăng nhập Google và lưu dữ liệu trên Firestore.
+
+**Stack:** Nuxt 4 · Nuxt UI v2 (Tailwind CSS, Heroicons) · Firebase (Auth + Firestore) · TypeScript
+
+## Chạy local
 
 ```bash
-# install dependencies
-$ npm install
-
-# serve with hot reload at localhost:3030
-$ npm run dev
-
-# build for production and launch server
-$ npm run build
-$ npm run start
-
-# generate static project
-$ npm run generate
+npm install
+cp .env.example .env   # điền cấu hình Firebase Web App
+npm run dev            # http://localhost:3000
 ```
 
-For detailed explanation on how things work, check out the [documentation](https://nuxtjs.org).
+Các lệnh khác: `npm run build` (build production ra `.output/`), `npm run preview`
+(chạy thử bản build), `npm run typecheck` (kiểm tra TypeScript).
 
-## Special Directories
+## Cấu hình
 
-You can create the following extra directories, some of which have special behaviors. Only `pages` is required; you can delete them if you don't want to use their functionality.
+- Biến môi trường `NUXT_PUBLIC_FIREBASE_*` (xem [.env.example](.env.example)) ánh xạ vào
+  `runtimeConfig.public.firebase` trong [nuxt.config.ts](nuxt.config.ts).
+- Firestore Security Rules nằm ở [firestore.rules](firestore.rules). Mỗi task chỉ thuộc về
+  người tạo (`userId == auth.uid`). Deploy bằng
+  `npx firebase-tools deploy --only firestore:rules` hoặc dán vào Firebase Console.
 
-### `assets`
+## Docker
 
-The assets directory contains your uncompiled assets such as Stylus or Sass files, images, or fonts.
+```bash
+docker build -t pomodoro .
+docker run -p 3030:3030 --env-file .env pomodoro
+```
 
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/assets).
+## Cấu trúc
 
-### `components`
-
-The components directory contains your Vue.js components. Components make up the different parts of your page and can be reused and imported into your pages, layouts and even other components.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/components).
-
-### `layouts`
-
-Layouts are a great help when you want to change the look and feel of your Nuxt app, whether you want to include a sidebar or have distinct layouts for mobile and desktop.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/layouts).
-
-### `pages`
-
-This directory contains your application views and routes. Nuxt will read all the `*.vue` files inside this directory and setup Vue Router automatically.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/get-started/routing).
-
-### `plugins`
-
-The plugins directory contains JavaScript plugins that you want to run before instantiating the root Vue.js Application. This is the place to add Vue plugins and to inject functions or constants. Every time you need to use `Vue.use()`, you should create a file in `plugins/` and add its path to plugins in `nuxt.config.js`.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/plugins).
-
-### `static`
-
-This directory contains your static files. Each file inside this directory is mapped to `/`.
-
-Example: `/static/robots.txt` is mapped as `/robots.txt`.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/static).
-
-### `store`
-
-This directory contains your Vuex store files. Creating a file in this directory automatically activates Vuex.
-
-More information about the usage of this directory in [the documentation](https://nuxtjs.org/docs/2.x/directory-structure/store).
+```
+app/
+  components/   TimerCard, TaskItem, TaskForm, Icons/*
+  composables/  useAuth, useTasks, useMode, useErrorToast
+  layouts/      default (header + nền theo chế độ)
+  pages/        index (timer + tasks)
+  plugins/      firebase.client (khởi tạo Firebase, đồng bộ trạng thái đăng nhập)
+  utils/        modes (cấu hình Pomodoro / Short Break / Long Break)
+public/         tomato.png, alert.mp3, lofi.mp3
+```

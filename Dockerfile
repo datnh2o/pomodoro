@@ -1,6 +1,6 @@
 # ---- Build stage ----
-# Cài đủ dependencies, build Nuxt (nhúng biến .env vào bundle client tại đây).
-FROM node:22-alpine3.18 AS build
+# Cài đủ dependencies và build Nuxt (Nitro) ra thư mục .output.
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
@@ -8,29 +8,23 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy phần còn lại (bao gồm .env) rồi build.
+# Copy phần còn lại rồi build. Nếu có .env, các giá trị NUXT_PUBLIC_* được nhúng làm
+# mặc định của runtimeConfig; vẫn có thể ghi đè bằng biến môi trường lúc chạy container.
 COPY . .
 RUN npm run build
 
 # ---- Runtime stage ----
-# Image gọn: chỉ chứa prod deps + output build. KHÔNG chứa .env hay devDependencies.
-FROM node:22-alpine3.18 AS runtime
+# .output của Nitro tự chứa đủ dependencies: không cần node_modules, npm hay .env.
+FROM node:22-alpine AS runtime
 
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV NUXT_HOST=0.0.0.0
-ENV NUXT_PORT=3030
+ENV NITRO_HOST=0.0.0.0
+ENV NITRO_PORT=3030
 
-# Chỉ cài dependencies production.
-COPY package*.json ./
-RUN npm ci --omit=dev
-
-# Lấy output build và file cấu hình runtime từ stage build.
-COPY --from=build /app/.nuxt ./.nuxt
-COPY --from=build /app/static ./static
-COPY --from=build /app/nuxt.config.js ./nuxt.config.js
+COPY --from=build /app/.output ./.output
 
 EXPOSE 3030
 
-CMD [ "npm", "start" ]
+CMD [ "node", ".output/server/index.mjs" ]
