@@ -1,0 +1,42 @@
+name: Deploy Firestore rules
+
+# Tự deploy firestore.rules khi file đổi trên main, khỏi phải dán tay vào Firebase Console.
+# Cần secret FIREBASE_SERVICE_ACCOUNT (JSON service account, cùng nội dung với
+# NUXT_FIREBASE_SERVICE_ACCOUNT) trong Settings > Secrets and variables > Actions.
+on:
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - firebase.json
+      - .firebaserc
+      - .github/workflows/deploy-firestore-rules.yml
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secret
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Thiếu secret FIREBASE_SERVICE_ACCOUNT, bỏ qua deploy."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Write credentials
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/service-account.json" >> "$GITHUB_ENV"
+
+      - name: Deploy rules
+        run: npx --yes firebase-tools@latest deploy --only firestore:rules --project pomodoro-9d76a --non-interactive

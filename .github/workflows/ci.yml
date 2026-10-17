@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Build không cần giá trị thật: runtimeConfig có mặc định rỗng, env thật đặt trên Netlify.
+      - name: Build
+        run: npm run build
+
+      # Netlify Scheduled Function không nằm trong build của Nuxt, bundle thử để bắt lỗi import sớm.
+      - name: Bundle Netlify function
+        run: npx esbuild netlify/functions/reminders.mts --bundle --platform=node --format=esm --target=node20 --outfile=/tmp/reminders.mjs --log-level=warning
