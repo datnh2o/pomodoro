@@ -1,9 +1,12 @@
-import { weekdayOf } from "~/utils/dates";
+import { weekdayOf } from "./dates";
 
 export interface MemberPermissions {
   view: boolean;
   add: boolean;
   edit: boolean;
+  /** Thông tin hiển thị, ghi lúc thêm thành viên (users/{uid} chỉ chính chủ đọc được) */
+  displayName?: string | null;
+  email?: string | null;
 }
 
 export interface Workspace {
@@ -20,6 +23,8 @@ export interface Workspace {
   /** Ngày cuối cùng đã chốt, null nếu chưa chốt ngày nào */
   lastClosedDate: string | null;
   members: Record<string, MemberPermissions>;
+  /** Mã link chia sẻ chỉ đọc (/share/{token}); null = tắt */
+  shareToken?: string | null;
 }
 
 export interface Proof {

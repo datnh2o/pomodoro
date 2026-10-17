@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Completion, MainTask } from "~/utils/models";
+import type { Completion, MainTask } from "#shared/utils/models";
 
 const props = defineProps<{
   task: MainTask;

@@ -16,8 +16,8 @@ import {
   type MainTask,
   type SideTask,
   type Task,
-} from "~/utils/models";
-import { todayKey, tomorrowKey } from "~/utils/dates";
+} from "#shared/utils/models";
+import { todayKey, tomorrowKey } from "#shared/utils/dates";
 
 export interface MainTaskInput {
   title: string;

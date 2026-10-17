@@ -1,4 +1,4 @@
-import type { Proof } from "~/utils/models";
+import type { Proof } from "#shared/utils/models";
 
 const MAX_EDGE = 1600;
 const JPEG_QUALITY = 0.85;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { todayKey } from "~/utils/dates";
+import { todayKey } from "#shared/utils/dates";
 
 const route = useRoute();
 const { user, ready, signOut } = useAuth();

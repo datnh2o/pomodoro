@@ -1,6 +1,6 @@
 import { doc, getDoc, onSnapshot, setDoc, updateDoc, type Unsubscribe } from "firebase/firestore";
-import { OWNER_PERMISSIONS, type MemberPermissions, type Workspace } from "~/utils/models";
-import { todayKey } from "~/utils/dates";
+import { OWNER_PERMISSIONS, type MemberPermissions, type Workspace } from "#shared/utils/models";
+import { todayKey } from "#shared/utils/dates";
 
 const DEFAULT_PENALTY = 10_000;
 
@@ -22,7 +22,8 @@ export const useWorkspace = () => {
     return member ?? { view: false, add: false, edit: false };
   });
   const isOwner = computed(() => !!user.value && workspace.value?.ownerUid === user.value.uid);
-  const can = (perm: keyof MemberPermissions) => permissions.value[perm];
+  type Permission = "view" | "add" | "edit";
+  const can = (perm: Permission): boolean => permissions.value[perm] === true;
 
   /** Tìm (hoặc tạo) workspace của người dùng rồi lắng nghe thay đổi. */
   const bind = async () => {
@@ -35,9 +36,16 @@ export const useWorkspace = () => {
     const userSnap = await getDoc(userRef);
     let workspaceId = (userSnap.data()?.workspaceId as string | undefined) ?? current.uid;
 
-    const wsRef = doc($firebase.firestore, "workspaces", workspaceId);
-    const wsSnap = await getDoc(wsRef);
-    if (!wsSnap.exists()) {
+    // Đọc workspace đang trỏ tới. Nếu bị từ chối (đã bị gỡ khỏi bảng chung) thì quay về bảng riêng.
+    let exists = false;
+    try {
+      exists = (await getDoc(doc($firebase.firestore, "workspaces", workspaceId))).exists();
+    } catch (error) {
+      if ((error as { code?: string }).code !== "permission-denied") throw error;
+      workspaceId = current.uid;
+      exists = (await getDoc(doc($firebase.firestore, "workspaces", workspaceId))).exists();
+    }
+    if (!exists) {
       // Lần đầu: tạo workspace riêng, bản thân là owner
       workspaceId = current.uid;
       await setDoc(doc($firebase.firestore, "workspaces", workspaceId), {
@@ -48,7 +56,10 @@ export const useWorkspace = () => {
         penaltyTotal: 0,
         createdDate: todayKey(),
         lastClosedDate: null,
-        members: { [current.uid]: OWNER_PERMISSIONS },
+        shareToken: null,
+        members: {
+          [current.uid]: { ...OWNER_PERMISSIONS, displayName: current.displayName, email: current.email },
+        },
       } satisfies Omit<Workspace, "id">);
     }
 

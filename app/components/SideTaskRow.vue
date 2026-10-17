@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { SideTask } from "~/utils/models";
-import { formatShortVi } from "~/utils/dates";
+import type { SideTask } from "#shared/utils/models";
+import { formatShortVi } from "#shared/utils/dates";
 
 const props = defineProps<{
   task: SideTask;

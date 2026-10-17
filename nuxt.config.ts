@@ -71,6 +71,9 @@ export default defineNuxtConfig({
   // mặc định của bản build (giữ luồng Docker: build có .env thì chạy không cần env).
   // Khi chạy, biến môi trường NUXT_PUBLIC_FIREBASE_* (nếu có) vẫn ghi đè các mặc định này.
   runtimeConfig: {
+    // Chỉ server dùng: service account để API /api/share đọc Firestore cho link chia sẻ.
+    // Đặt qua biến môi trường NUXT_FIREBASE_SERVICE_ACCOUNT (chuỗi JSON của private key).
+    firebaseServiceAccount: "",
     public: {
       firebase: {
         apiKey: process.env.NUXT_PUBLIC_FIREBASE_API_KEY ?? "",

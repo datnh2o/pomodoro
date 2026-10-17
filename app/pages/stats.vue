@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DayMap } from "~/composables/useHistory";
 import { STREAK_LOOKBACK_DAYS } from "~/composables/useHistory";
-import { addDays, formatMoney, formatShortVi, todayKey, weekdayOf } from "~/utils/dates";
+import { addDays, formatMoney, formatShortVi, todayKey, weekdayOf } from "#shared/utils/dates";
 
 type Period = "week" | "month" | "year";
 

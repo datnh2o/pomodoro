@@ -1,16 +1,84 @@
 <script setup lang="ts">
-import type { MainTask } from "~/utils/models";
+import type { MainTask } from "#shared/utils/models";
 import type { MainTaskInput } from "~/composables/useTasks";
-import { isActiveFrom } from "~/utils/models";
-import { formatMoney, formatShortVi, todayKey, WEEKDAY_LABELS } from "~/utils/dates";
+import type { SubAccountInput } from "~/composables/useMembers";
+import { isActiveFrom } from "#shared/utils/models";
+import { formatMoney, formatShortVi, todayKey, WEEKDAY_LABELS } from "#shared/utils/dates";
 
 const { user } = useAuth();
 const { workspace, can, isOwner, updatePenaltyAmount } = useWorkspace();
 const { mainTasks, createMainTask, updateMainTask, archiveMainTask } = useTasks();
 const { permission, requestPermission } = useReminders();
 const { resetPassword } = useAuth();
+const { members, createSubAccount, updateMember, removeMember, shareUrl, enableShareLink, disableShareLink } = useMembers();
 const { showError } = useErrorToast();
 const toast = useToast();
+
+// ---- Thành viên ----
+const subAccountOpen = ref(false);
+const memberBusy = ref<string | null>(null);
+
+const onCreateSubAccount = async (input: SubAccountInput) => {
+  try {
+    await createSubAccount(input);
+    toast.add({
+      title: "Đã tạo tài khoản con",
+      description: `${input.email} đăng nhập tại cùng địa chỉ app này.`,
+      color: "success",
+    });
+  } catch (error) {
+    showError("Không tạo được tài khoản", error);
+  }
+};
+
+const onTogglePermission = async (uid: string, key: "add" | "edit", value: boolean) => {
+  const member = workspace.value?.members[uid];
+  if (!member) return;
+  memberBusy.value = uid;
+  try {
+    const next = { add: member.add, edit: member.edit, [key]: value };
+    // Quyền sửa bao hàm quyền thêm
+    if (key === "edit" && value) next.add = true;
+    if (key === "add" && !value) next.edit = false;
+    await updateMember(uid, next);
+  } catch (error) {
+    showError("Không đổi được quyền", error);
+  } finally {
+    memberBusy.value = null;
+  }
+};
+
+const onRemoveMember = async (uid: string, name: string) => {
+  if (!confirm(`Gỡ ${name} khỏi bảng này? Họ vẫn đăng nhập được nhưng sẽ dùng bảng riêng.`)) return;
+  try {
+    await removeMember(uid);
+  } catch (error) {
+    showError("Không gỡ được", error);
+  }
+};
+
+// ---- Link chia sẻ ----
+const shareBusy = ref(false);
+const onToggleShare = async (enabled: boolean) => {
+  shareBusy.value = true;
+  try {
+    if (enabled) await enableShareLink();
+    else await disableShareLink();
+  } catch (error) {
+    showError("Không cập nhật được link", error);
+  } finally {
+    shareBusy.value = false;
+  }
+};
+const copyShareUrl = async () => {
+  if (!shareUrl.value) return;
+  try {
+    await navigator.clipboard.writeText(shareUrl.value);
+    toast.add({ title: "Đã sao chép link", color: "success" });
+  } catch {
+    toast.add({ title: "Không sao chép được", description: shareUrl.value, color: "warning" });
+  }
+};
 
 const today = computed(() => todayKey());
 const activeMain = computed(() => mainTasks.value.filter((t) => isActiveFrom(t, today.value)));
@@ -141,6 +209,63 @@ const onChangePassword = async () => {
       <p class="mt-3 text-sm">Tổng nợ hiện tại: <b class="text-red-600">{{ formatMoney(workspace?.penaltyTotal ?? 0) }}</b></p>
     </section>
 
+    <!-- Thành viên (owner) -->
+    <section v-if="isOwner" class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
+      <div class="mb-2 flex items-center justify-between">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Thành viên</h2>
+        <UButton size="sm" icon="i-lucide-user-plus" @click="subAccountOpen = true">Tài khoản con</UButton>
+      </div>
+      <p class="mb-3 text-sm text-gray-600">Tài khoản con dùng chung bảng nhiệm vụ này với quyền bạn cấp.</p>
+      <ul class="divide-y divide-gray-100">
+        <li v-for="member in members" :key="member.uid" class="flex flex-col gap-2 py-3">
+          <div class="flex items-center gap-2">
+            <div class="min-w-0 flex-1">
+              <p class="truncate font-medium">{{ member.displayName || member.email || member.uid }}</p>
+              <p v-if="member.displayName && member.email" class="truncate text-xs text-gray-500">{{ member.email }}</p>
+            </div>
+            <UBadge v-if="member.isOwner" color="primary" variant="subtle" size="sm">Chủ sở hữu</UBadge>
+            <UButton
+              v-else
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-user-minus"
+              aria-label="Gỡ thành viên"
+              @click="onRemoveMember(member.uid, member.displayName || member.email || 'thành viên')"
+            />
+          </div>
+          <div v-if="!member.isOwner" class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            <USwitch
+              :model-value="member.add"
+              :disabled="memberBusy === member.uid"
+              label="Thêm"
+              @update:model-value="(v) => onTogglePermission(member.uid, 'add', v)"
+            />
+            <USwitch
+              :model-value="member.edit"
+              :disabled="memberBusy === member.uid"
+              label="Sửa"
+              @update:model-value="(v) => onTogglePermission(member.uid, 'edit', v)"
+            />
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Link chia sẻ (owner) -->
+    <section v-if="isOwner" class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Link chia sẻ</h2>
+      <p class="mb-3 text-sm text-gray-600">
+        Ai có link sẽ xem được (không sửa) nhiệm vụ hôm nay, tổng nợ và thống kê tháng. Tắt là link hết hiệu lực.
+      </p>
+      <USwitch :model-value="!!workspace?.shareToken" :disabled="shareBusy" label="Bật link chia sẻ" @update:model-value="onToggleShare" />
+      <div v-if="shareUrl" class="mt-3 flex items-center gap-2">
+        <UInput :model-value="shareUrl" readonly class="flex-1" />
+        <UButton color="neutral" variant="outline" icon="i-lucide-copy" aria-label="Sao chép" @click="copyShareUrl" />
+        <UButton color="neutral" variant="outline" icon="i-lucide-external-link" aria-label="Mở" :to="shareUrl" target="_blank" />
+      </div>
+    </section>
+
     <!-- Thông báo -->
     <section class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Thông báo</h2>
@@ -170,9 +295,9 @@ const onChangePassword = async () => {
       <div class="mt-3 flex flex-wrap gap-2">
         <UButton color="neutral" variant="outline" icon="i-lucide-key-round" @click="onChangePassword">Đổi mật khẩu</UButton>
       </div>
-      <p class="mt-3 text-xs text-gray-400">Thành viên và phân quyền sẽ có ở bản sau (Phase 3).</p>
     </section>
 
     <MainTaskForm v-model:open="formOpen" :task="editing" @save="onSave" />
+    <SubAccountForm v-model:open="subAccountOpen" @save="onCreateSubAccount" />
   </div>
 </template>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DayMap, DaySummary } from "~/composables/useHistory";
-import { isMainTask, isScheduledOn, isSideTask, type MainTask } from "~/utils/models";
-import { addDays, formatDateVi, formatMoney, todayKey, weekdayOf } from "~/utils/dates";
+import { isMainTask, isScheduledOn, isSideTask, type MainTask } from "#shared/utils/models";
+import { addDays, formatDateVi, formatMoney, todayKey, weekdayOf } from "#shared/utils/dates";
 
 const { workspace } = useWorkspace();
 const { tasks, ready: tasksReady } = useTasks();

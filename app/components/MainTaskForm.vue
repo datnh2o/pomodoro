@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { FormError, FormSubmitEvent } from "@nuxt/ui";
-import type { MainTask } from "~/utils/models";
+import type { MainTask } from "#shared/utils/models";
 import type { MainTaskInput } from "~/composables/useTasks";
-import { ALL_WEEKDAYS, WEEKDAY_LABELS } from "~/utils/dates";
+import { ALL_WEEKDAYS, WEEKDAY_LABELS } from "#shared/utils/dates";
 
 const props = defineProps<{ task: MainTask | null }>();
 const open = defineModel<boolean>("open", { default: false });

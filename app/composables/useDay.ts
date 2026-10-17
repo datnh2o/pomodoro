@@ -8,8 +8,8 @@ import {
   updateDoc,
   type Unsubscribe,
 } from "firebase/firestore";
-import { isScheduledOn, type DayDoc, type MainTask, type Proof } from "~/utils/models";
-import { addDays, dateRange, todayKey, yesterdayKey } from "~/utils/dates";
+import { isScheduledOn, type DayDoc, type MainTask, type Proof } from "#shared/utils/models";
+import { addDays, dateRange, todayKey, yesterdayKey } from "#shared/utils/dates";
 
 const emptyDay = (date: string): DayDoc => ({
   date,

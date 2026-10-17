@@ -1,5 +1,5 @@
-import type { MainTask } from "~/utils/models";
-import { currentTimeHHmm } from "~/utils/dates";
+import type { MainTask } from "#shared/utils/models";
+import { currentTimeHHmm } from "#shared/utils/dates";
 
 /**
  * Nhắc trong app khi tới giờ của nhiệm vụ chính (khi app đang mở).

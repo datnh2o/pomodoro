@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MainTask, Proof } from "~/utils/models";
+import type { MainTask, Proof } from "#shared/utils/models";
 
 const props = defineProps<{ task: MainTask | null; folder: string }>();
 const open = defineModel<boolean>("open", { default: false });

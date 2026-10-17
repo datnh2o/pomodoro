@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { MainTask, Proof, SideTask } from "~/utils/models";
+import type { MainTask, Proof, SideTask } from "#shared/utils/models";
 import type { DayMap } from "~/composables/useHistory";
 import { STREAK_LOOKBACK_DAYS } from "~/composables/useHistory";
-import { addDays, formatDateVi, formatMoney } from "~/utils/dates";
+import { addDays, formatDateVi, formatMoney } from "#shared/utils/dates";
 
 const { user } = useAuth();
 const { workspace, can } = useWorkspace();

@@ -84,6 +84,16 @@ sửa lịch hiệu lực từ ngày mai), nhiệm vụ phụ (gõ hoặc nói, 
 chứng minh lên Cloudinary (nén trước), chốt ngày + tổng nợ, nhắc trong app, PWA, cache ngoại tuyến
 của Firestore, tab Pomodoro giữ nguyên, firestore.rules mới (cần deploy).
 
+### Trạng thái Phase 2 (xong)
+Tab Nhật ký (lịch tháng trạng thái + chi tiết ngày + ảnh), tab Tổng hợp (tuần/tháng/năm, ô số liệu,
+bảng theo nhiệm vụ), streak theo lineage, huy hiệu streak ở Hôm nay. Phần tính thuần ở `shared/utils/stats.ts`.
+
+### Trạng thái Phase 3 (xong, chờ cấu hình service account)
+Owner tạo tài khoản con (email + mật khẩu, qua Firebase app phụ nên không bị đăng xuất), bật/tắt
+quyền thêm/sửa, gỡ thành viên (người bị gỡ tự quay về bảng riêng khi đăng nhập lại). Link chia sẻ
+chỉ đọc: `workspaces.shareToken` + API `/api/share/{token}` (firebase-admin, cache 60 giây) + trang
+`/share/{token}`. Cần biến `NUXT_FIREBASE_SERVICE_ACCOUNT` trên server (xem .env.example).
+
 ## 6. Kỹ thuật & giới hạn trên iPhone
 
 - **Ảnh**: bucket Firebase hiện tại (`*.firebasestorage.app`) cần gói Blaze. Phương án miễn phí
