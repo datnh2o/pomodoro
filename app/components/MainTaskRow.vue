@@ -8,6 +8,8 @@ const props = defineProps<{
   canAct: boolean;
   /** Số ngày liên tiếp đã hoàn thành (không tính hôm nay nếu chưa xong) */
   streak?: number;
+  /** Ảnh đang chờ tải lên (mất mạng) */
+  queued?: boolean;
 }>();
 
 const emit = defineEmits<{ complete: []; uncomplete: [] }>();
@@ -51,6 +53,9 @@ const done = computed(() => !!props.completion);
         </UBadge>
         <UBadge v-if="streak" color="error" variant="subtle" size="sm" icon="i-lucide-flame">
           {{ streak }} ngày liên tiếp
+        </UBadge>
+        <UBadge v-if="queued && !done" color="warning" variant="subtle" size="sm" icon="i-lucide-cloud-upload">
+          Chờ tải ảnh
         </UBadge>
       </div>
 

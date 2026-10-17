@@ -28,8 +28,8 @@ const longFormatter = new Intl.DateTimeFormat("vi-VN", {
 export const dateKey = (date: Date = new Date()): string => keyFormatter.format(date);
 export const todayKey = (): string => dateKey();
 
-/** Giờ hiện tại HH:mm theo giờ VN */
-export const currentTimeHHmm = (): string => timeFormatter.format(new Date());
+/** Giờ HH:mm theo giờ VN của một thời điểm (mặc định: bây giờ) */
+export const currentTimeHHmm = (date: Date = new Date()): string => timeFormatter.format(date);
 
 const keyToUtcDate = (key: string): Date => new Date(`${key}T00:00:00Z`);
 

@@ -100,5 +100,12 @@ export const useWorkspace = () => {
     });
   };
 
-  return { workspace, loading, permissions, isOwner, can, bind, unbind, updatePenaltyAmount };
+  const updateEveningReminder = async (time: string | null) => {
+    if (!workspace.value) return;
+    await updateDoc(doc($firebase.firestore, "workspaces", workspace.value.id), {
+      eveningReminderTime: time,
+    });
+  };
+
+  return { workspace, loading, permissions, isOwner, can, bind, unbind, updatePenaltyAmount, updateEveningReminder };
 };

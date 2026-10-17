@@ -25,6 +25,19 @@ export interface Workspace {
   members: Record<string, MemberPermissions>;
   /** Mã link chia sẻ chỉ đọc (/share/{token}); null = tắt */
   shareToken?: string | null;
+  /** Giờ nhắc cuối ngày (HH:mm) nếu còn nhiệm vụ chính chưa xong; mặc định 21:00 */
+  eveningReminderTime?: string | null;
+}
+
+export const DEFAULT_EVENING_REMINDER = "21:00";
+
+/** Đăng ký Web Push của một thiết bị (workspaces/{ws}/pushSubscriptions/{id}) */
+export interface PushSubscriptionDoc {
+  uid: string;
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  userAgent: string;
+  createdAt: number;
 }
 
 export interface Proof {

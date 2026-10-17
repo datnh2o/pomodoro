@@ -94,6 +94,19 @@ quyền thêm/sửa, gỡ thành viên (người bị gỡ tự quay về bảng
 chỉ đọc: `workspaces.shareToken` + API `/api/share/{token}` (firebase-admin, cache 60 giây) + trang
 `/share/{token}`. Cần biến `NUXT_FIREBASE_SERVICE_ACCOUNT` trên server (xem .env.example).
 
+### Trạng thái Phase 4 (xong, chờ cấu hình trên Netlify)
+- Nhắc đẩy: `server/lib/reminders.ts` (firebase-admin + web-push) quét mọi workspace có thiết bị
+  đăng ký, gửi nhắc cho nhiệm vụ tới giờ (cửa sổ 3 phút, chống gửi trùng bằng `reminderLog/{ngày}`)
+  và nhắc cuối ngày (`eveningReminderTime`, mặc định 21:00). Chạy bởi Netlify Scheduled Function
+  `netlify/functions/reminders.mts` mỗi phút, hoặc gọi tay `/api/cron/reminders` với `x-cron-secret`.
+- Client: `usePush` đăng ký Web Push (VAPID), lưu `pushSubscriptions/{sha256(endpoint)}`; service
+  worker nhận push qua `public/push-handler.js` (Workbox importScripts). Chỉ chạy ở bản build.
+- Ngoại tuyến: `useProofQueue` lưu ảnh vào IndexedDB khi tải lỗi vì mất mạng, tự tải lại và tích
+  hoàn thành đúng ngày khi có mạng; tiền phạt ngày đã chốt không hoàn tác.
+- Cần: `NUXT_FIREBASE_SERVICE_ACCOUNT`, `NUXT_PUBLIC_VAPID_PUBLIC_KEY`, `NUXT_VAPID_PRIVATE_KEY`,
+  `NUXT_VAPID_SUBJECT`, `NUXT_CRON_SECRET`; publish lại firestore.rules (pushSubscriptions, reminderLog).
+- Hạn mức: 1 lần/phút ≈ 43.200 lượt gọi function/tháng trong 125.000 miễn phí của Netlify.
+
 ## 6. Kỹ thuật & giới hạn trên iPhone
 
 - **Ảnh**: bucket Firebase hiện tại (`*.firebasestorage.app`) cần gói Blaze. Phương án miễn phí

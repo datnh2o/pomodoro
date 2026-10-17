@@ -12,7 +12,34 @@ const { showError } = useErrorToast();
 const { check: checkReminders } = useReminders();
 const { fetchDays, currentStreaks } = useHistory();
 const { tasks } = useTasks();
+const { items: queuedItems, online, enqueue, isQueued, flush: flushQueue } = useProofQueue();
 const toast = useToast();
+
+// Tải ảnh đang chờ khi có mạng lại / khi dữ liệu sẵn sàng
+watch(
+  [online, tasksReady, () => workspace.value?.id, () => queuedItems.value.length],
+  async ([isOnline, isReady, wsId, count]) => {
+    if (!isOnline || !isReady || !wsId || !count) return;
+    try {
+      const done = await flushQueue(tasks.value.filter((t): t is MainTask => t.type === "main"));
+      if (done) toast.add({ title: `Đã tải ${done} nhiệm vụ chờ ảnh`, color: "success", icon: "i-lucide-cloud-upload" });
+    } catch (error) {
+      console.warn("flush queue", error);
+    }
+  },
+  { immediate: true }
+);
+
+const onQueueProofs = async (files: File[]) => {
+  const task = proofTask.value;
+  if (!task) return;
+  try {
+    await enqueue(task, today.value, files);
+    toast.add({ title: "Đã lưu ảnh, sẽ tải khi có mạng", description: task.title, color: "warning", icon: "i-lucide-wifi-off" });
+  } catch (error) {
+    showError("Không lưu được ảnh", error);
+  }
+};
 
 // Streak từng nhiệm vụ: đọc lịch sử 120 ngày gần nhất một lần, tính lại khi tích/bỏ tích
 const streakDays = ref<DayMap>({});
@@ -169,6 +196,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
           :task="task"
           :completion="completionOf(task.id)"
           :streak="streaks[task.lineageId]"
+          :queued="isQueued(task.id, today)"
           :can-act="can('add') && !dayDoc?.closed"
           @complete="onCompleteRequest(task)"
           @uncomplete="onUncomplete(task)"
@@ -197,6 +225,6 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
       </div>
     </section>
 
-    <ProofUploadModal v-model:open="proofOpen" :task="proofTask" :folder="proofFolder" @confirm="onProofConfirm" />
+    <ProofUploadModal v-model:open="proofOpen" :task="proofTask" :folder="proofFolder" @confirm="onProofConfirm" @queue="onQueueProofs" />
   </div>
 </template>

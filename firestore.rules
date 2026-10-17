@@ -70,6 +70,17 @@ service cloud.firestore {
         allow create, update: if can(wsId, 'add');
         allow delete: if false;
       }
+
+      // Đăng ký nhắc đẩy: mỗi thành viên chỉ đụng tới đăng ký của chính mình
+      match /pushSubscriptions/{subscriptionId} {
+        allow read, delete: if can(wsId, 'view') && resource.data.uid == request.auth.uid;
+        allow create, update: if can(wsId, 'view') && request.resource.data.uid == request.auth.uid;
+      }
+
+      // Nhật ký đã gửi nhắc: chỉ server (firebase-admin) ghi/đọc
+      match /reminderLog/{date} {
+        allow read, write: if false;
+      }
     }
 
     // Mặc định từ chối

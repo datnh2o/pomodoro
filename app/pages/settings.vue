@@ -2,14 +2,40 @@
 import type { MainTask } from "#shared/utils/models";
 import type { MainTaskInput } from "~/composables/useTasks";
 import type { SubAccountInput } from "~/composables/useMembers";
-import { isActiveFrom } from "#shared/utils/models";
+import { DEFAULT_EVENING_REMINDER, isActiveFrom } from "#shared/utils/models";
 import { formatMoney, formatShortVi, todayKey, WEEKDAY_LABELS } from "#shared/utils/dates";
 
 const { user } = useAuth();
 const { workspace, can, isOwner, updatePenaltyAmount } = useWorkspace();
 const { mainTasks, createMainTask, updateMainTask, archiveMainTask } = useTasks();
-const { permission, requestPermission } = useReminders();
+const push = usePush();
 const { resetPassword } = useAuth();
+const { updateEveningReminder } = useWorkspace();
+
+// ---- Nhắc đẩy ----
+const onTogglePush = async (enabled: boolean) => {
+  try {
+    if (enabled) {
+      await push.subscribe();
+      toast.add({ title: "Đã bật nhắc đẩy trên thiết bị này", color: "success", icon: "i-lucide-bell" });
+    } else {
+      await push.unsubscribe();
+    }
+  } catch (error) {
+    showError("Không bật được nhắc đẩy", error);
+  }
+};
+
+const eveningInput = ref("");
+watch(() => workspace.value?.eveningReminderTime, (v) => { eveningInput.value = v ?? DEFAULT_EVENING_REMINDER; }, { immediate: true });
+const saveEvening = async () => {
+  try {
+    await updateEveningReminder(eveningInput.value || null);
+    toast.add({ title: "Đã lưu giờ nhắc cuối ngày", color: "success" });
+  } catch (error) {
+    showError("Không lưu được", error);
+  }
+};
 const { members, createSubAccount, updateMember, removeMember, shareUrl, enableShareLink, disableShareLink } = useMembers();
 const { showError } = useErrorToast();
 const toast = useToast();
@@ -270,20 +296,34 @@ const onChangePassword = async () => {
     <section class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Thông báo</h2>
       <p class="mb-3 text-sm text-gray-600">
-        Nhắc trong app khi tới giờ nhiệm vụ (khi app đang mở). Nhắc đẩy khi app đóng sẽ có ở bản sau.
+        Khi app đang mở, tới giờ nhiệm vụ sẽ có nhắc trong app. Bật nhắc đẩy để được nhắc cả khi app đóng:
+        đúng giờ từng nhiệm vụ và một lần cuối ngày nếu còn việc chưa xong.
       </p>
-      <UButton
-        v-if="permission === 'default'"
-        color="neutral"
-        variant="outline"
-        icon="i-lucide-bell"
-        @click="requestPermission"
-      >
-        Cho phép thông báo
-      </UButton>
-      <p v-else-if="permission === 'granted'" class="text-sm text-green-700">Đã cho phép thông báo.</p>
-      <p v-else-if="permission === 'denied'" class="text-sm text-red-600">Thông báo đang bị chặn trong cài đặt trình duyệt.</p>
-      <p v-else class="text-sm text-gray-500">Trình duyệt này không hỗ trợ thông báo.</p>
+
+      <UAlert
+        v-if="push.needsHomeScreen.value"
+        color="info"
+        variant="subtle"
+        icon="i-lucide-smartphone"
+        title="Trên iPhone cần thêm app ra màn hình chính"
+        description="Safari > nút Chia sẻ > Thêm vào MH chính, rồi mở app từ icon đó và bật nhắc đẩy."
+        class="mb-3"
+      />
+      <p v-else-if="!push.supported.value" class="mb-3 text-sm text-gray-500">Trình duyệt này không hỗ trợ nhắc đẩy.</p>
+      <p v-else-if="push.permission.value === 'denied'" class="mb-3 text-sm text-red-600">Thông báo đang bị chặn trong cài đặt trình duyệt.</p>
+
+      <USwitch
+        :model-value="push.subscribed.value"
+        :disabled="push.busy.value || !push.supported.value || push.permission.value === 'denied'"
+        label="Nhắc đẩy trên thiết bị này"
+        @update:model-value="onTogglePush"
+      />
+
+      <form v-if="isOwner" class="mt-4 flex flex-wrap items-center gap-2" @submit.prevent="saveEvening">
+        <label class="text-sm text-gray-700" for="evening-time">Nhắc cuối ngày lúc</label>
+        <UInput id="evening-time" v-model="eveningInput" type="time" class="w-32" />
+        <UButton type="submit" color="neutral" variant="outline" size="sm">Lưu</UButton>
+      </form>
     </section>
 
     <!-- Tài khoản -->

@@ -3,7 +3,7 @@ import type { MainTask, Proof } from "#shared/utils/models";
 
 const props = defineProps<{ task: MainTask | null; folder: string }>();
 const open = defineModel<boolean>("open", { default: false });
-const emit = defineEmits<{ confirm: [proofs: Proof[]] }>();
+const emit = defineEmits<{ confirm: [proofs: Proof[]]; queue: [files: File[]] }>();
 
 const { isConfigured, upload, thumbnailUrl } = useProofUpload();
 const { showError } = useErrorToast();
@@ -11,6 +11,7 @@ const { showError } = useErrorToast();
 interface PendingFile {
   id: number;
   name: string;
+  file: File;
   preview: string;
   status: "uploading" | "done" | "error";
   proof?: Proof;
@@ -26,6 +27,11 @@ const uploadedProofs = computed(() =>
 );
 const uploading = computed(() => files.value.some((f) => f.status === "uploading"));
 const canConfirm = computed(() => uploadedProofs.value.length > 0 && !uploading.value && !confirming.value);
+/** Có ảnh tải lỗi do mất mạng → cho phép lưu lại tải sau */
+const networkFailed = computed(() => files.value.some((f) => f.status === "error" && f.error === NETWORK_ERROR));
+const NETWORK_ERROR = "Mất kết nối mạng";
+const isNetworkError = (error: unknown) =>
+  !navigator.onLine || (error instanceof TypeError && /fetch|network/i.test(error.message));
 
 const reset = () => {
   files.value.forEach((f) => URL.revokeObjectURL(f.preview));
@@ -44,6 +50,7 @@ const onPick = async (event: Event) => {
     const entry: PendingFile = {
       id: nextId++,
       name: file.name,
+      file,
       preview: URL.createObjectURL(file),
       status: "uploading",
     };
@@ -57,11 +64,12 @@ const onPick = async (event: Event) => {
       }
     } catch (error) {
       const current = files.value.find((f) => f.id === entry.id);
+      const network = isNetworkError(error);
       if (current) {
         current.status = "error";
-        current.error = (error as Error).message;
+        current.error = network ? NETWORK_ERROR : (error as Error).message;
       }
-      showError("Tải ảnh thất bại", error);
+      if (!network) showError("Tải ảnh thất bại", error);
     }
   }
 };
@@ -70,6 +78,12 @@ const remove = (id: number) => {
   const entry = files.value.find((f) => f.id === id);
   if (entry) URL.revokeObjectURL(entry.preview);
   files.value = files.value.filter((f) => f.id !== id);
+};
+
+/** Đưa toàn bộ ảnh (kể cả ảnh đã tải xong) vào hàng đợi dưới dạng file gốc, hoàn thành một lần khi có mạng */
+const queueForLater = () => {
+  emit("queue", files.value.map((f) => f.file));
+  open.value = false;
 };
 
 const confirm = async () => {
@@ -109,6 +123,16 @@ const confirm = async () => {
           <span class="text-sm font-medium">Chụp ảnh hoặc chọn từ thư viện</span>
           <input type="file" accept="image/*" capture="environment" multiple class="sr-only" @change="onPick" />
         </label>
+
+        <UAlert
+          v-if="networkFailed"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-wifi-off"
+          title="Đang mất mạng"
+          description="Lưu ảnh lại, app sẽ tự tải lên và tích hoàn thành khi có mạng. Nếu qua ngày mới trước khi có mạng, tiền phạt của hôm nay vẫn tính."
+          :actions="[{ label: 'Lưu để tải sau', color: 'warning', onClick: queueForLater }]"
+        />
 
         <ul v-if="files.length" class="grid grid-cols-3 gap-2">
           <li v-for="file in files" :key="file.id" class="relative aspect-square overflow-hidden rounded-lg border border-gray-200">

@@ -54,8 +54,11 @@ export const useDay = () => {
   const isCompleted = (taskId: string) => !!dayDoc.value?.completions[taskId];
   const completionOf = (taskId: string) => dayDoc.value?.completions[taskId];
 
-  /** Tích hoàn thành nhiệm vụ chính hôm nay. Nhiệm vụ yêu cầu ảnh phải có ít nhất 1 ảnh. */
-  const complete = async (task: MainTask, proofs: Proof[]) => {
+  /**
+   * Tích hoàn thành nhiệm vụ chính (mặc định hôm nay). Nhiệm vụ yêu cầu ảnh phải có ít nhất 1 ảnh.
+   * `date` khác hôm nay chỉ dùng cho ảnh xếp hàng lúc mất mạng; ngày đã chốt thì tiền phạt không hoàn tác.
+   */
+  const complete = async (task: MainTask, proofs: Proof[], date: string = today.value) => {
     if (task.requiresProof && proofs.length === 0) {
       throw new Error("Nhiệm vụ này cần ít nhất một ảnh chứng minh");
     }
@@ -63,10 +66,9 @@ export const useDay = () => {
     const uid = user.value?.uid;
     if (!ws || !uid) throw new Error("User is not authenticated");
     await setDoc(
-      dayRef(ws.id, today.value),
+      dayRef(ws.id, date),
       {
-        date: today.value,
-        closed: false,
+        date,
         completions: { [task.id]: { at: Date.now(), byUid: uid, proofs } },
       },
       { merge: true }

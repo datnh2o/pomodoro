@@ -46,6 +46,8 @@ export default defineNuxtConfig({
       ],
     },
     workbox: {
+      // Service worker nhận Web Push (public/push-handler.js) được nhúng vào SW do Workbox sinh ra
+      importScripts: ["push-handler.js"],
       navigateFallback: "/",
       navigateFallbackDenylist: [/^\/api\//],
       // Không precache file nhạc lớn
@@ -74,7 +76,12 @@ export default defineNuxtConfig({
     // Chỉ server dùng: service account để API /api/share đọc Firestore cho link chia sẻ.
     // Đặt qua biến môi trường NUXT_FIREBASE_SERVICE_ACCOUNT (chuỗi JSON của private key).
     firebaseServiceAccount: "",
+    // Web Push: private key + subject (NUXT_VAPID_PRIVATE_KEY, NUXT_VAPID_SUBJECT), bí mật gọi cron tay.
+    vapidPrivateKey: "",
+    vapidSubject: "",
+    cronSecret: "",
     public: {
+      vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
       firebase: {
         apiKey: process.env.NUXT_PUBLIC_FIREBASE_API_KEY ?? "",
         authDomain: process.env.NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",
