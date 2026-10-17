@@ -19,7 +19,7 @@ useHead({ title });
     <p v-if="error.statusMessage" class="text-white/80">
       {{ error.statusMessage }}
     </p>
-    <UButton color="white" @click="clearError({ redirect: '/' })">
+    <UButton color="neutral" variant="outline" @click="clearError({ redirect: '/' })">
       Home page
     </UButton>
   </div>

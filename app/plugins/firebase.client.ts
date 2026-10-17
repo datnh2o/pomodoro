@@ -1,6 +1,10 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
 import { GoogleAuthProvider, getAuth, onAuthStateChanged } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import type { AuthUser } from "~/composables/useAuth";
 
 /**
@@ -18,7 +22,10 @@ export default defineNuxtPlugin(() => {
 
   const app = getApps().length ? getApp() : initializeApp(config);
   const auth = getAuth(app);
-  const firestore = getFirestore(app);
+  // Cache ngoại tuyến: xem và tích nhiệm vụ khi mất mạng, tự đồng bộ khi có mạng lại
+  const firestore = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  });
   const googleProvider = new GoogleAuthProvider();
 
   const user = useState<AuthUser | null>("auth:user", () => null);

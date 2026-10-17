@@ -1,25 +1,78 @@
 rules_version = '2';
 
-// Firestore Security Rules cho Pomodoro app.
-// Triển khai: firebase deploy --only firestore:rules
-// (hoặc dán vào Firebase Console > Firestore Database > Rules)
+// Firestore Security Rules — Nhiệm vụ hằng ngày.
+// Triển khai: dán vào Firebase Console > Firestore Database > Rules, hoặc
+// npx firebase-tools deploy --only firestore:rules
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Mỗi task chỉ thuộc về người tạo ra nó (field userId == uid).
-    match /Tasks/{taskId} {
-      allow read, delete: if request.auth != null
-                          && resource.data.userId == request.auth.uid;
-
-      allow create: if request.auth != null
-                    && request.resource.data.userId == request.auth.uid;
-
-      allow update: if request.auth != null
-                    && resource.data.userId == request.auth.uid
-                    && request.resource.data.userId == request.auth.uid;
+    function signedIn() {
+      return request.auth != null;
     }
 
-    // Mặc định từ chối mọi truy cập khác.
+    function ws(wsId) {
+      return get(/databases/$(database)/documents/workspaces/$(wsId)).data;
+    }
+
+    // Thành viên có quyền `perm` (view | add | edit) trong workspace
+    function can(wsId, perm) {
+      return signedIn()
+        && request.auth.uid in ws(wsId).members
+        && ws(wsId).members[request.auth.uid][perm] == true;
+    }
+
+    function isOwner(wsId) {
+      return signedIn() && ws(wsId).ownerUid == request.auth.uid;
+    }
+
+    // Hồ sơ người dùng: chỉ chính chủ đọc/ghi
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /workspaces/{wsId} {
+      // Đọc nếu là thành viên. Tài liệu chưa tồn tại (resource == null) chỉ được đọc
+      // khi id trùng uid của mình: app cần get() trước khi tạo workspace lần đầu.
+      allow read: if signedIn()
+        && ((resource == null && wsId == request.auth.uid)
+            || (resource != null && request.auth.uid in resource.data.members));
+
+      // Tạo workspace của chính mình (id = uid), tự đặt mình làm owner
+      allow create: if signedIn()
+        && wsId == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.members[request.auth.uid].view == true;
+
+      // Owner sửa mọi thứ (thành viên, mức phạt, ...).
+      // Thành viên có quyền `add` chỉ được cập nhật kết quả chốt ngày.
+      allow update: if isOwner(wsId)
+        || (can(wsId, 'add')
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['lastClosedDate', 'penaltyTotal']));
+
+      allow delete: if false;
+
+      // Nhiệm vụ chính và phụ
+      match /tasks/{taskId} {
+        allow read: if can(wsId, 'view');
+        allow create: if can(wsId, 'add')
+          && request.resource.data.createdBy == request.auth.uid;
+        // Sửa/xóa cần quyền edit; nhiệm vụ phụ do mình tạo thì được tự sửa/xóa
+        allow update, delete: if can(wsId, 'edit')
+          || (can(wsId, 'add')
+              && resource.data.type == 'side'
+              && resource.data.createdBy == request.auth.uid);
+      }
+
+      // Kết quả theo ngày: tích hoàn thành, ảnh chứng minh, chốt phạt
+      match /days/{date} {
+        allow read: if can(wsId, 'view');
+        allow create, update: if can(wsId, 'add');
+        allow delete: if false;
+      }
+    }
+
+    // Mặc định từ chối
     match /{document=**} {
       allow read, write: if false;
     }

@@ -1,0 +1,5 @@
+# Netlify: Nuxt tự chọn preset Nitro "netlify" khi build trên Netlify.
+# Biến môi trường NUXT_PUBLIC_* khai báo trong Netlify UI (Site configuration > Environment variables).
+[build]
+  command = "npm run build"
+  publish = "dist"

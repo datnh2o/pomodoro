@@ -1,7 +1,9 @@
 export default defineAppConfig({
   ui: {
-    // Màu mặc định cho component Nuxt UI (nút Save, focus ring, ...).
-    primary: "red",
-    gray: "neutral",
+    // Màu ngữ nghĩa của Nuxt UI (nút Save, focus ring, ...).
+    colors: {
+      primary: "red",
+      neutral: "neutral",
+    },
   },
 });

@@ -3,27 +3,60 @@ export default defineNuxtConfig({
   compatibilityDate: "2026-10-17",
   devtools: { enabled: true },
 
-  // Nuxt UI v2 kéo theo sẵn Tailwind CSS, @nuxt/icon (Heroicons) và color-mode.
-  modules: ["@nuxt/ui"],
+  // App chạy hoàn toàn sau đăng nhập Firebase (chỉ có ở client) nên dùng SPA:
+  // không cần SSR, tránh lệch server/client và đơn giản hóa chặn route theo đăng nhập.
+  ssr: false,
+
+  // Nuxt UI 4 kéo theo sẵn Tailwind CSS v4, @nuxt/icon (Lucide) và color-mode.
+  modules: ["@nuxt/ui", "@vite-pwa/nuxt"],
+  css: ["~/assets/css/main.css"],
 
   app: {
     head: {
-      title: "Pomodoro Timer",
-      htmlAttrs: { lang: "en" },
+      title: "Nhiệm vụ hằng ngày",
+      htmlAttrs: { lang: "vi" },
       meta: [
-        { name: "description", content: "Pomodoro timer with task tracking" },
+        { name: "description", content: "Theo dõi nhiệm vụ hằng ngày, chứng minh bằng ảnh, phạt khi bỏ lỡ" },
         { name: "format-detection", content: "telephone=no" },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+        { name: "theme-color", content: "#BA4949" },
       ],
-      link: [{ rel: "icon", type: "image/png", href: "/tomato.png" }],
+      link: [
+        { rel: "icon", type: "image/png", href: "/tomato.png" },
+        { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png" },
+      ],
     },
+  },
+
+  // PWA: thêm ra màn hình chính iPhone, cache shell để mở nhanh.
+  pwa: {
+    registerType: "autoUpdate",
+    manifest: {
+      name: "Nhiệm vụ hằng ngày",
+      short_name: "Nhiệm vụ",
+      lang: "vi",
+      display: "standalone",
+      start_url: "/",
+      theme_color: "#BA4949",
+      background_color: "#ffffff",
+      icons: [
+        { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+        { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+      ],
+    },
+    workbox: {
+      navigateFallback: "/",
+      navigateFallbackDenylist: [/^\/api\//],
+      // Không precache file nhạc lớn
+      globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
+    },
+    client: { installPrompt: true },
+    devOptions: { enabled: false },
   },
 
   // App dùng nền màu riêng theo chế độ (Pomodoro / Break) nên khóa ở light mode.
   colorMode: { preference: "light", fallback: "light" },
-
-  // Module Tailwind tự thêm plugin nesting nhưng Nuxt 4 không nạp được nó từ Tailwind 3,
-  // và dự án không dùng CSS nesting nên tắt để khỏi cảnh báo khi dev.
-  postcss: { plugins: { "tailwindcss/nesting": false } },
 
   // Pre-bundle các gói Vite hay phát hiện muộn lúc dev (gây reload trang):
   // Firebase của app và client của Nuxt DevTools.
@@ -47,6 +80,12 @@ export default defineNuxtConfig({
         messagingSenderId: process.env.NUXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "",
         appId: process.env.NUXT_PUBLIC_FIREBASE_APP_ID ?? "",
         measurementId: process.env.NUXT_PUBLIC_FIREBASE_MEASUREMENT_ID ?? "",
+      },
+      // Ảnh chứng minh tải thẳng từ trình duyệt lên Cloudinary bằng unsigned upload preset.
+      cloudinary: {
+        cloudName: process.env.NUXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "",
+        uploadPreset: process.env.NUXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? "",
+        folder: process.env.NUXT_PUBLIC_CLOUDINARY_FOLDER ?? "daily-tasks",
       },
     },
   },

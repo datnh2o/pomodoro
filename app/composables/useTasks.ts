@@ -3,70 +3,185 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDocs,
-  query,
+  onSnapshot,
+  setDoc,
   updateDoc,
-  where,
   writeBatch,
+  type Unsubscribe,
 } from "firebase/firestore";
+import {
+  isMainTask,
+  isScheduledOn,
+  isSideTask,
+  type MainTask,
+  type SideTask,
+  type Task,
+} from "~/utils/models";
+import { todayKey, tomorrowKey } from "~/utils/dates";
 
-export interface Task {
-  id: string;
+export interface MainTaskInput {
   title: string;
-  pomos: number;
-  note: string | null;
-  done: boolean;
-  createdAt?: number;
+  note: string;
+  requiresProof: boolean;
+  weekdays: number[];
+  reminderTime: string | null;
 }
 
-/** Dữ liệu nhập từ form (tạo mới / sửa) */
-export type TaskDraft = Pick<Task, "title" | "pomos" | "note">;
-/** Phần cập nhật một task */
-export type TaskPatch = Partial<Pick<Task, "title" | "pomos" | "note" | "done">>;
-
-const COLLECTION = "Tasks";
-
-/** CRUD task trên Firestore, luôn giới hạn theo user đang đăng nhập (khớp firestore.rules). */
+/** Nhiệm vụ chính + phụ của workspace, cập nhật realtime. */
 export const useTasks = () => {
   const { $firebase } = useNuxtApp();
+  const { user } = useAuth();
+  const { workspace } = useWorkspace();
 
-  const tasksRef = () => collection($firebase.firestore, COLLECTION);
-  const taskRef = (id: string) => doc($firebase.firestore, COLLECTION, id);
+  const tasks = useState<Task[]>("tasks", () => []);
+  const ready = useState<boolean>("tasks:ready", () => false);
+  const unsubscribe = useState<Unsubscribe | null>("tasks:unsub", () => null);
 
-  const requireUid = (): string => {
-    const uid = $firebase.auth.currentUser?.uid;
+  const tasksRef = () => collection($firebase.firestore, "workspaces", requireWs(), "tasks");
+  const taskRef = (id: string) => doc($firebase.firestore, "workspaces", requireWs(), "tasks", id);
+  const requireWs = () => {
+    const id = workspace.value?.id;
+    if (!id) throw new Error("Chưa có workspace");
+    return id;
+  };
+  const requireUid = () => {
+    const uid = user.value?.uid;
     if (!uid) throw new Error("User is not authenticated");
     return uid;
   };
 
-  const fetchTasks = async (): Promise<Task[]> => {
-    const uid = requireUid();
-    const snapshot = await getDocs(query(tasksRef(), where("userId", "==", uid)));
-    return snapshot.docs
-      .map((d) => ({ id: d.id, ...(d.data() as Omit<Task, "id">) }))
-      // Sắp xếp phía client để không cần composite index trên Firestore
-      .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
+  const bind = (workspaceId: string) => {
+    unbind();
+    unsubscribe.value = onSnapshot(
+      collection($firebase.firestore, "workspaces", workspaceId, "tasks"),
+      (snap) => {
+        tasks.value = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
+        ready.value = true;
+      },
+      (error) => console.error("tasks listener", error)
+    );
   };
 
-  const createTask = async (draft: TaskDraft): Promise<Task> => {
-    const uid = requireUid();
-    const data = { ...draft, done: false, userId: uid, createdAt: Date.now() };
-    const ref = await addDoc(tasksRef(), data);
-    return { id: ref.id, ...data };
+  const unbind = () => {
+    unsubscribe.value?.();
+    unsubscribe.value = null;
+    tasks.value = [];
+    ready.value = false;
   };
 
-  const updateTask = (id: string, patch: TaskPatch) => updateDoc(taskRef(id), patch);
+  // ---- Truy vấn dẫn xuất ----
+  const mainTasks = computed(() => tasks.value.filter(isMainTask).sort((a, b) => a.order - b.order));
 
-  const deleteTask = (id: string) => deleteDoc(taskRef(id));
+  /** Nhiệm vụ chính lên lịch cho ngày `date` */
+  const mainTasksFor = (date: string) => mainTasks.value.filter((t) => isScheduledOn(t, date));
 
-  /** Xóa toàn bộ task của user hiện tại trong một batch (nguyên tử). */
-  const clearTasks = async () => {
-    const uid = requireUid();
-    const snapshot = await getDocs(query(tasksRef(), where("userId", "==", uid)));
+  /** Nhiệm vụ phụ hiện trong ngày `date`: chưa xong (dồn từ các ngày trước) hoặc xong đúng ngày đó */
+  const sideTasksFor = (date: string) =>
+    tasks.value
+      .filter(isSideTask)
+      .filter((t) => (t.doneDate === null && t.createdDate <= date) || t.doneDate === date)
+      .sort((a, b) => a.createdAt - b.createdAt);
+
+  // ---- Nhiệm vụ chính ----
+  const createMainTask = async (input: MainTaskInput) => {
+    const ref = doc(tasksRef());
+    const order = mainTasks.value.length ? Math.max(...mainTasks.value.map((t) => t.order)) + 1 : 0;
+    const data: Omit<MainTask, "id"> = {
+      type: "main",
+      ...input,
+      // Thêm mới có hiệu lực ngay hôm nay (chỉ thêm việc cho mình, không có lợi khi gian lận)
+      effectiveFrom: todayKey(),
+      endsOn: null,
+      lineageId: ref.id,
+      order,
+      createdBy: requireUid(),
+      createdAt: Date.now(),
+    };
+    await setDoc(ref, data);
+  };
+
+  /**
+   * Sửa nhiệm vụ chính. Đổi lịch (thứ lặp lại) hoặc yêu cầu ảnh chỉ có hiệu lực từ ngày mai:
+   * đóng bản cũ (endsOn = ngày mai) và tạo bản mới, để không "sửa cho khỏi bị phạt" hôm nay.
+   * Tên, ghi chú, giờ nhắc thì sửa tại chỗ. Trả về true nếu đã tạo bản mới.
+   */
+  const updateMainTask = async (task: MainTask, input: MainTaskInput): Promise<boolean> => {
+    const sameWeekdays =
+      task.weekdays.length === input.weekdays.length &&
+      task.weekdays.every((d) => input.weekdays.includes(d));
+    const scheduleChanged = !sameWeekdays || task.requiresProof !== input.requiresProof;
+    const notEffectiveYet = task.effectiveFrom > todayKey();
+
+    if (!scheduleChanged || notEffectiveYet) {
+      await updateDoc(taskRef(task.id), { ...input });
+      return false;
+    }
+
+    const tomorrow = tomorrowKey();
     const batch = writeBatch($firebase.firestore);
-    snapshot.forEach((d) => batch.delete(d.ref));
+    batch.update(taskRef(task.id), { endsOn: tomorrow });
+    const next: Omit<MainTask, "id"> = {
+      type: "main",
+      ...input,
+      effectiveFrom: tomorrow,
+      endsOn: null,
+      lineageId: task.lineageId,
+      order: task.order,
+      createdBy: requireUid(),
+      createdAt: Date.now(),
+    };
+    batch.set(doc(tasksRef()), next);
     await batch.commit();
+    return true;
   };
 
-  return { fetchTasks, createTask, updateTask, deleteTask, clearTasks };
+  /** Ngừng nhiệm vụ chính từ ngày mai (hôm nay vẫn tính). Chưa có hiệu lực thì xóa luôn. */
+  const archiveMainTask = async (task: MainTask) => {
+    if (task.effectiveFrom > todayKey()) {
+      await deleteDoc(taskRef(task.id));
+      return;
+    }
+    await updateDoc(taskRef(task.id), { endsOn: tomorrowKey() });
+  };
+
+  // ---- Nhiệm vụ phụ ----
+  const createSideTask = async (title: string) => {
+    const data: Omit<SideTask, "id"> = {
+      type: "side",
+      title: title.trim(),
+      createdDate: todayKey(),
+      doneDate: null,
+      doneAt: null,
+      createdBy: requireUid(),
+      createdAt: Date.now(),
+    };
+    await addDoc(tasksRef(), data);
+  };
+
+  const setSideTaskDone = async (task: SideTask, done: boolean) => {
+    await updateDoc(taskRef(task.id), {
+      doneDate: done ? todayKey() : null,
+      doneAt: done ? Date.now() : null,
+    });
+  };
+
+  const deleteSideTask = async (task: SideTask) => {
+    await deleteDoc(taskRef(task.id));
+  };
+
+  return {
+    tasks,
+    ready,
+    mainTasks,
+    mainTasksFor,
+    sideTasksFor,
+    bind,
+    unbind,
+    createMainTask,
+    updateMainTask,
+    archiveMainTask,
+    createSideTask,
+    setSideTaskDone,
+    deleteSideTask,
+  };
 };

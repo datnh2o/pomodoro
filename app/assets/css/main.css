@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/*
+ * Bảng màu 3 chế độ của app (Tailwind v4 cấu hình bằng CSS):
+ *   DEFAULT: nền trang, light: nền thẻ timer, dark: tab đang chọn.
+ * Sinh ra các class bg-pomodoro, bg-pomodoro-light, text-short, ... dùng trong app/utils/modes.ts.
+ */
+@theme static {
+  --color-pomodoro: #ba4949;
+  --color-pomodoro-light: #c15f5e;
+  --color-pomodoro-dark: #a75250;
+  --color-short: #38858a;
+  --color-short-light: #509396;
+  --color-short-dark: #447f82;
+  --color-long: #397097;
+  --color-long-light: #5181a2;
+  --color-long-dark: #456f8c;
+}

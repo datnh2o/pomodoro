@@ -2,7 +2,7 @@
 
 Ứng dụng Pomodoro kèm danh sách task, đăng nhập Google và lưu dữ liệu trên Firestore.
 
-**Stack:** Nuxt 4 · Nuxt UI v2 (Tailwind CSS, Heroicons) · Firebase (Auth + Firestore) · TypeScript
+**Stack:** Nuxt 4 · Nuxt UI 4 (Tailwind CSS v4, Lucide) · Firebase (Auth + Firestore) · TypeScript
 
 ## Chạy local
 

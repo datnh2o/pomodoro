@@ -108,7 +108,7 @@ onBeforeUnmount(stop);
         title="Reset timer"
         @click="reset"
       >
-        <UIcon name="i-heroicons-forward" class="h-8 w-8" />
+        <UIcon name="i-lucide-skip-forward" class="h-8 w-8" />
       </button>
     </div>
   </div>

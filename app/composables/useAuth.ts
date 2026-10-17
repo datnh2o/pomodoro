@@ -1,4 +1,11 @@
-import { signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  updateProfile,
+} from "firebase/auth";
 
 export interface AuthUser {
   uid: string;
@@ -8,7 +15,7 @@ export interface AuthUser {
 }
 
 /**
- * Trạng thái đăng nhập + hành động đăng nhập/đăng xuất.
+ * Trạng thái đăng nhập + các hành động đăng nhập/đăng ký/đăng xuất.
  * `user`/`ready` được plugin firebase.client cập nhật qua onAuthStateChanged.
  */
 export const useAuth = () => {
@@ -16,15 +23,46 @@ export const useAuth = () => {
   const ready = useState<boolean>("auth:ready", () => false);
   const isAuthenticated = computed(() => !!user.value);
 
+  const auth = () => useNuxtApp().$firebase.auth;
+
   const signInWithGoogle = async () => {
-    const { $firebase } = useNuxtApp();
-    await signInWithPopup($firebase.auth, $firebase.googleProvider);
+    await signInWithPopup(auth(), useNuxtApp().$firebase.googleProvider);
+  };
+
+  const signInWithEmail = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth(), email.trim(), password);
+  };
+
+  const registerWithEmail = async (email: string, password: string, displayName: string) => {
+    const credential = await createUserWithEmailAndPassword(auth(), email.trim(), password);
+    if (displayName.trim()) {
+      await updateProfile(credential.user, { displayName: displayName.trim() });
+      // Cập nhật state ngay vì onAuthStateChanged đã bắn trước khi có displayName
+      user.value = {
+        uid: credential.user.uid,
+        displayName: displayName.trim(),
+        email: credential.user.email,
+        photoURL: credential.user.photoURL,
+      };
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    await sendPasswordResetEmail(auth(), email.trim());
   };
 
   const signOut = async () => {
-    const { $firebase } = useNuxtApp();
-    await firebaseSignOut($firebase.auth);
+    await firebaseSignOut(auth());
   };
 
-  return { user, ready, isAuthenticated, signInWithGoogle, signOut };
+  return {
+    user,
+    ready,
+    isAuthenticated,
+    signInWithGoogle,
+    signInWithEmail,
+    registerWithEmail,
+    resetPassword,
+    signOut,
+  };
 };
