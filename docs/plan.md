@@ -107,6 +107,10 @@ chỉ đọc: `workspaces.shareToken` + API `/api/share/{token}` (firebase-admin
   `NUXT_VAPID_SUBJECT`, `NUXT_CRON_SECRET`; publish lại firestore.rules (pushSubscriptions, reminderLog).
 - Hạn mức: 1 lần/phút ≈ 43.200 lượt gọi function/tháng trong 125.000 miễn phí của Netlify.
 
+### Chế độ nghỉ (xong)
+`workspace.restDays[]`: owner khai nghỉ cho hôm nay hoặc tương lai (không khai lùi). Ngày nghỉ không
+lên lịch nhiệm vụ chính, không phạt, không đứt streak, không gửi nhắc; Nhật ký hiện ô "Nghỉ".
+
 ## 6. Kỹ thuật & giới hạn trên iPhone
 
 - **Ảnh**: bucket Firebase hiện tại (`*.firebasestorage.app`) cần gói Blaze. Phương án miễn phí

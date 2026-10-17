@@ -1,7 +1,8 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { parseServiceAccount } from "../../lib/reminders";
 import { addDays, todayKey } from "#shared/utils/dates";
-import { isMainTask, isScheduledOn, type DayDoc, type Task, type Workspace } from "#shared/utils/models";
+import { isMainTask, isRestDay, isScheduledOn, type DayDoc, type Task, type Workspace } from "#shared/utils/models";
 import { computeStats, currentStreaks, normalizeDay, STREAK_LOOKBACK_DAYS, type DayMap } from "#shared/utils/stats";
 
 /**
@@ -9,15 +10,16 @@ import { computeStats, currentStreaks, normalizeDay, STREAK_LOOKBACK_DAYS, type 
  * Người xem không đăng nhập nên server đọc Firestore bằng service account (firebase-admin).
  */
 const getDb = () => {
-  const raw = useRuntimeConfig().firebaseServiceAccount;
-  if (!raw) {
+  // Nuxt tự parse env dạng JSON thành object; chấp nhận cả chuỗi lẫn object
+  const raw = useRuntimeConfig().firebaseServiceAccount as string | Record<string, unknown>;
+  if (!raw || (typeof raw === "object" && !Object.keys(raw).length)) {
     throw createError({
       statusCode: 503,
       statusMessage: "Link chia sẻ chưa được cấu hình trên server (thiếu NUXT_FIREBASE_SERVICE_ACCOUNT).",
     });
   }
   if (!getApps().length) {
-    initializeApp({ credential: cert(JSON.parse(raw)) });
+    initializeApp({ credential: cert(parseServiceAccount(raw)) });
   }
   return getFirestore();
 };
@@ -50,11 +52,13 @@ export default defineEventHandler(async (event) => {
     days[d.id] = normalizeDay(d.id, d.data() as Partial<DayDoc>);
   });
 
-  const month = computeStats({ from: monthStart, to: today, days, tasks, earliest: ws.createdDate, today });
-  const streaks = currentStreaks(tasks, days, ws.createdDate, today);
+  const restDays = ws.restDays ?? [];
+  const month = computeStats({ from: monthStart, to: today, days, tasks, earliest: ws.createdDate, today, restDays });
+  const streaks = currentStreaks(tasks, days, ws.createdDate, today, restDays);
   const todayDay = days[today];
+  const restToday = isRestDay(restDays, today);
 
-  const todayMain = tasks
+  const todayMain = (restToday ? [] : tasks)
     .filter(isMainTask)
     .filter((t) => isScheduledOn(t, today))
     .sort((a, b) => a.order - b.order)
@@ -75,6 +79,7 @@ export default defineEventHandler(async (event) => {
   return {
     name: ws.name,
     today,
+    restToday,
     penaltyAmount: ws.penaltyAmount,
     penaltyTotal: ws.penaltyTotal,
     month: {

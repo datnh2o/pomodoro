@@ -3,14 +3,37 @@ import type { MainTask } from "#shared/utils/models";
 import type { MainTaskInput } from "~/composables/useTasks";
 import type { SubAccountInput } from "~/composables/useMembers";
 import { DEFAULT_EVENING_REMINDER, isActiveFrom } from "#shared/utils/models";
-import { formatMoney, formatShortVi, todayKey, WEEKDAY_LABELS } from "#shared/utils/dates";
+import { addDays, formatDateVi, formatMoney, formatShortVi, todayKey, WEEKDAY_LABELS } from "#shared/utils/dates";
 
 const { user } = useAuth();
 const { workspace, can, isOwner, updatePenaltyAmount } = useWorkspace();
 const { mainTasks, createMainTask, updateMainTask, archiveMainTask } = useTasks();
 const push = usePush();
 const { resetPassword } = useAuth();
-const { updateEveningReminder } = useWorkspace();
+const { updateEveningReminder, addRestDay, removeRestDay } = useWorkspace();
+
+// ---- Chế độ nghỉ ----
+const restInput = ref("");
+const upcomingRestDays = computed(() =>
+  [...(workspace.value?.restDays ?? [])].filter((d) => d >= today.value).sort()
+);
+const onAddRest = async (date: string) => {
+  if (!date) return;
+  try {
+    await addRestDay(date);
+    restInput.value = "";
+    toast.add({ title: "Đã khai ngày nghỉ", description: formatDateVi(date), color: "success", icon: "i-lucide-palmtree" });
+  } catch (error) {
+    showError("Không khai được ngày nghỉ", error);
+  }
+};
+const onRemoveRest = async (date: string) => {
+  try {
+    await removeRestDay(date);
+  } catch (error) {
+    showError("Không bỏ được ngày nghỉ", error);
+  }
+};
 
 // ---- Nhắc đẩy ----
 const onTogglePush = async (enabled: boolean) => {
@@ -290,6 +313,38 @@ const onChangePassword = async () => {
         <UButton color="neutral" variant="outline" icon="i-lucide-copy" aria-label="Sao chép" @click="copyShareUrl" />
         <UButton color="neutral" variant="outline" icon="i-lucide-external-link" aria-label="Mở" :to="shareUrl" target="_blank" />
       </div>
+    </section>
+
+    <!-- Chế độ nghỉ (owner) -->
+    <section v-if="isOwner" class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Chế độ nghỉ</h2>
+      <p class="mb-3 text-sm text-gray-600">
+        Ngày nghỉ (ốm, đi xa) không tính nhiệm vụ chính, không phạt, không đứt chuỗi. Chỉ khai được cho
+        hôm nay hoặc ngày sau, không khai lùi.
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-palmtree" :disabled="upcomingRestDays.includes(today)" @click="onAddRest(today)">
+          Nghỉ hôm nay
+        </UButton>
+        <UButton color="neutral" variant="outline" size="sm" :disabled="upcomingRestDays.includes(addDays(today, 1))" @click="onAddRest(addDays(today, 1))">
+          Nghỉ ngày mai
+        </UButton>
+      </div>
+      <form class="mt-3 flex items-center gap-2" @submit.prevent="onAddRest(restInput)">
+        <UInput v-model="restInput" type="date" :min="today" class="w-44" />
+        <UButton type="submit" color="neutral" variant="outline" size="sm" :disabled="!restInput">Thêm ngày</UButton>
+      </form>
+      <ul v-if="upcomingRestDays.length" class="mt-3 flex flex-wrap gap-2">
+        <li v-for="date in upcomingRestDays" :key="date">
+          <UBadge color="info" variant="subtle" size="lg" class="gap-1">
+            {{ date === today ? "Hôm nay" : formatShortVi(date) }}
+            <button type="button" class="ml-1 rounded-full hover:bg-sky-200" :aria-label="`Bỏ nghỉ ${date}`" @click="onRemoveRest(date)">
+              <UIcon name="i-lucide-x" class="h-3.5 w-3.5" />
+            </button>
+          </UBadge>
+        </li>
+      </ul>
+      <p v-else class="mt-3 text-sm text-gray-400">Chưa có ngày nghỉ sắp tới.</p>
     </section>
 
     <!-- Thông báo -->

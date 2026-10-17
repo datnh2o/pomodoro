@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot, setDoc, updateDoc, type Unsubscribe } from "firebase/firestore";
+import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, setDoc, updateDoc, type Unsubscribe } from "firebase/firestore";
 import { OWNER_PERMISSIONS, type MemberPermissions, type Workspace } from "#shared/utils/models";
 import { todayKey } from "#shared/utils/dates";
 
@@ -107,5 +107,21 @@ export const useWorkspace = () => {
     });
   };
 
-  return { workspace, loading, permissions, isOwner, can, bind, unbind, updatePenaltyAmount, updateEveningReminder };
+  /** Khai ngày nghỉ: chỉ hôm nay hoặc tương lai, để không khai lùi nhằm né phạt */
+  const addRestDay = async (date: string) => {
+    if (!workspace.value) return;
+    if (date < todayKey()) throw new Error("Chỉ khai nghỉ cho hôm nay hoặc ngày sau, không khai lùi.");
+    await updateDoc(doc($firebase.firestore, "workspaces", workspace.value.id), { restDays: arrayUnion(date) });
+  };
+
+  const removeRestDay = async (date: string) => {
+    if (!workspace.value) return;
+    if (date < todayKey()) throw new Error("Ngày đã qua không sửa được.");
+    await updateDoc(doc($firebase.firestore, "workspaces", workspace.value.id), { restDays: arrayRemove(date) });
+  };
+
+  return {
+    workspace, loading, permissions, isOwner, can, bind, unbind,
+    updatePenaltyAmount, updateEveningReminder, addRestDay, removeRestDay,
+  };
 };

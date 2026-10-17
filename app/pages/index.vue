@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { MainTask, Proof, SideTask } from "#shared/utils/models";
+import { isRestDay, type MainTask, type Proof, type SideTask } from "#shared/utils/models";
 import type { DayMap } from "~/composables/useHistory";
 import { STREAK_LOOKBACK_DAYS } from "~/composables/useHistory";
 import { addDays, formatDateVi, formatMoney } from "#shared/utils/dates";
@@ -48,7 +48,7 @@ const streaks = computed(() => {
   if (!ws) return {} as Record<string, number>;
   const days = { ...streakDays.value };
   if (dayDoc.value) days[today.value] = dayDoc.value;
-  return currentStreaks(tasks.value, days, ws.createdDate);
+  return currentStreaks(tasks.value, days, ws.createdDate, today.value, ws.restDays ?? []);
 });
 watch(
   [tasksReady, () => workspace.value?.id, today],
@@ -63,7 +63,8 @@ watch(
   { immediate: true }
 );
 
-const mainToday = computed(() => mainTasksFor(today.value));
+const isRest = computed(() => isRestDay(workspace.value?.restDays, today.value));
+const mainToday = computed(() => (isRest.value ? [] : mainTasksFor(today.value)));
 const sideToday = computed(() => sideTasksFor(today.value));
 const doneMain = computed(() => mainToday.value.filter((t) => isCompleted(t.id)));
 const pendingMain = computed(() => mainToday.value.filter((t) => !isCompleted(t.id)));
@@ -171,7 +172,11 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
         </div>
       </div>
       <UProgress :model-value="progress" color="success" size="sm" class="mt-3" />
-      <p v-if="pendingMain.length" class="mt-2 text-sm text-amber-700">
+      <p v-if="isRest" class="mt-2 text-sm text-sky-700">
+        <UIcon name="i-lucide-palmtree" class="mr-1 inline h-4 w-4 align-text-bottom" />
+        Hôm nay là ngày nghỉ: không tính nhiệm vụ chính, không phạt, không đứt chuỗi.
+      </p>
+      <p v-else-if="pendingMain.length" class="mt-2 text-sm text-amber-700">
         <UIcon name="i-lucide-triangle-alert" class="mr-1 inline h-4 w-4 align-text-bottom" />
         Còn {{ pendingMain.length }} việc, nếu bỏ lỡ sẽ mất {{ formatMoney(atRisk) }}
       </p>
@@ -185,6 +190,9 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
     <section>
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Nhiệm vụ chính</h2>
       <div v-if="!tasksReady" class="py-6 text-center text-gray-400">Đang tải...</div>
+      <div v-else-if="isRest" class="rounded-xl border border-dashed border-sky-300 bg-sky-50 p-6 text-center text-sky-800">
+        Đang nghỉ. Nhiệm vụ chính sẽ quay lại vào ngày không nghỉ tiếp theo.
+      </div>
       <div v-else-if="!mainToday.length" class="rounded-xl border border-dashed border-gray-300 p-6 text-center text-gray-500">
         Hôm nay không có nhiệm vụ chính.
         <NuxtLink v-if="can('edit')" to="/settings" class="block pt-1 text-primary hover:underline">Thêm trong Cài đặt</NuxtLink>

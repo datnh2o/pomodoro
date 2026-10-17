@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DayMap, DaySummary } from "~/composables/useHistory";
-import { isMainTask, isScheduledOn, isSideTask, type MainTask } from "#shared/utils/models";
+import { isMainTask, isRestDay, isScheduledOn, isSideTask, type MainTask } from "#shared/utils/models";
 import { addDays, formatDateVi, formatMoney, todayKey, weekdayOf } from "#shared/utils/dates";
 
 const { workspace } = useWorkspace();
@@ -60,7 +60,7 @@ const mergedDays = computed<DayMap>(() => {
 const stats = computed(() => {
   const ws = workspace.value;
   if (!ws) return null;
-  return computeStats({ from: monthStart.value, to: monthEnd.value, days: mergedDays.value, tasks: tasks.value, earliest: ws.createdDate });
+  return computeStats({ from: monthStart.value, to: monthEnd.value, days: mergedDays.value, tasks: tasks.value, earliest: ws.createdDate, restDays: ws.restDays });
 });
 
 /** Ô lịch: thêm ô trống đầu tháng để T2 đứng cột đầu */
@@ -80,10 +80,11 @@ const STATUS_STYLE: Record<DaySummary["status"], { cell: string; label: string; 
   partial: { cell: "bg-amber-100 text-amber-800 ring-amber-300", label: "Thiếu", icon: "i-lucide-minus" },
   missed: { cell: "bg-red-100 text-red-800 ring-red-300", label: "Bỏ lỡ", icon: "i-lucide-circle-x" },
   today: { cell: "bg-white text-gray-900 ring-primary", label: "Hôm nay", icon: "i-lucide-clock" },
+  rest: { cell: "bg-sky-100 text-sky-800 ring-sky-300", label: "Nghỉ", icon: "i-lucide-palmtree" },
   none: { cell: "bg-gray-50 text-gray-400 ring-gray-200", label: "Không có việc", icon: "i-lucide-minus" },
   future: { cell: "bg-white text-gray-300 ring-gray-100", label: "", icon: "" },
 };
-const LEGEND = (["full", "partial", "missed", "none"] as const).map((k) => ({ key: k, ...STATUS_STYLE[k] }));
+const LEGEND = (["full", "partial", "missed", "rest", "none"] as const).map((k) => ({ key: k, ...STATUS_STYLE[k] }));
 
 // ---- Chi tiết ngày đã chọn ----
 const selectedDay = computed(() => mergedDays.value[selected.value]);
@@ -94,8 +95,9 @@ interface DetailRow {
   done: boolean;
   proofs: { url: string; publicId: string }[];
 }
+const selectedIsRest = computed(() => isRestDay(workspace.value?.restDays, selected.value));
 const selectedMain = computed<DetailRow[]>(() =>
-  tasks.value
+  (selectedIsRest.value ? [] : tasks.value)
     .filter(isMainTask)
     .filter((t) => isScheduledOn(t, selected.value))
     .map((task) => {
@@ -160,6 +162,7 @@ const selectedSide = computed(() =>
       <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ formatDateVi(selected) }}</h3>
       <div v-if="loading" class="py-4 text-center text-gray-400">Đang tải...</div>
       <template v-else>
+        <p v-if="selectedIsRest" class="mb-2 text-sm text-sky-700">Ngày nghỉ: không tính nhiệm vụ chính.</p>
         <p v-if="selectedSummary?.penalty" class="mb-2 text-sm text-red-600">
           Mất {{ formatMoney(selectedSummary.penalty) }} vì bỏ lỡ {{ selectedSummary.scheduled - selectedSummary.completed }} việc.
         </p>

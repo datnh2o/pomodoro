@@ -6,6 +6,7 @@ definePageMeta({ layout: false });
 interface ShareData {
   name: string;
   today: string;
+  restToday: boolean;
   penaltyAmount: number;
   penaltyTotal: number;
   month: { penalty: number; fullDays: number; countedDays: number; missedCount: number };
@@ -80,7 +81,8 @@ const rate = computed(() => {
 
         <section>
           <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Hôm nay</h2>
-          <p v-if="!data.todayMain.length" class="text-sm text-gray-500">Hôm nay không có nhiệm vụ chính.</p>
+          <p v-if="data.restToday" class="text-sm text-sky-700">Hôm nay là ngày nghỉ, không tính nhiệm vụ chính.</p>
+          <p v-else-if="!data.todayMain.length" class="text-sm text-gray-500">Hôm nay không có nhiệm vụ chính.</p>
           <ul v-else class="flex flex-col gap-2">
             <li v-for="task in data.todayMain" :key="task.id" class="rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-200">
               <div class="flex items-center gap-2">

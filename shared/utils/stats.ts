@@ -4,7 +4,7 @@ import { addDays, dateRange, todayKey } from "./dates";
 /** Số ngày nhìn lại để tính streak hiện tại */
 export const STREAK_LOOKBACK_DAYS = 120;
 
-export type DayStatus = "none" | "future" | "full" | "partial" | "missed" | "today";
+export type DayStatus = "none" | "future" | "full" | "partial" | "missed" | "today" | "rest";
 
 export interface DaySummary {
   date: string;
@@ -70,10 +70,17 @@ const lineageStateOn = (versions: MainTask[], date: string, day: DayDoc | undefi
   return { scheduled, completed };
 };
 
-/** Streak hiện tại: đếm lùi từ hôm nay qua các ngày được lên lịch, dừng ở ngày bỏ lỡ đầu tiên */
-export const currentStreakOf = (versions: MainTask[], days: DayMap, today: string, earliest: string) => {
+/** Streak hiện tại: đếm lùi từ hôm nay qua các ngày được lên lịch (bỏ qua ngày nghỉ), dừng ở ngày bỏ lỡ đầu tiên */
+export const currentStreakOf = (
+  versions: MainTask[],
+  days: DayMap,
+  today: string,
+  earliest: string,
+  restDays: string[] = []
+) => {
   let streak = 0;
   for (let date = today; date >= earliest; date = addDays(date, -1)) {
+    if (restDays.includes(date)) continue;
     const { scheduled, completed } = lineageStateOn(versions, date, days[date]);
     if (!scheduled) continue;
     if (completed) {
@@ -88,10 +95,16 @@ export const currentStreakOf = (versions: MainTask[], days: DayMap, today: strin
 };
 
 /** Streak hiện tại của từng lineage */
-export const currentStreaks = (tasks: Task[], days: DayMap, earliest: string, today = todayKey()) => {
+export const currentStreaks = (
+  tasks: Task[],
+  days: DayMap,
+  earliest: string,
+  today = todayKey(),
+  restDays: string[] = []
+) => {
   const result: Record<string, number> = {};
   for (const [id, versions] of groupLineages(tasks)) {
-    result[id] = currentStreakOf(versions, days, today, earliest);
+    result[id] = currentStreakOf(versions, days, today, earliest, restDays);
   }
   return result;
 };
@@ -103,8 +116,10 @@ export const computeStats = (input: {
   tasks: Task[];
   earliest: string;
   today?: string;
+  restDays?: string[];
 }): PeriodStats => {
   const today = input.today ?? todayKey();
+  const restDays = input.restDays ?? [];
   const lineages = groupLineages(input.tasks);
   const summaries: Record<string, DaySummary> = {};
   let penalty = 0;
@@ -119,6 +134,12 @@ export const computeStats = (input: {
     const day = input.days[date];
     let scheduled = 0;
     let completed = 0;
+
+    // Ngày nghỉ: không tính nhiệm vụ, không đứt chuỗi
+    if (restDays.includes(date)) {
+      summaries[date] = { date, status: date > today ? "future" : "rest", scheduled: 0, completed: 0, penalty: 0 };
+      continue;
+    }
 
     for (const [id, versions] of lineages) {
       const state = lineageStateOn(versions, date, day);
@@ -172,7 +193,7 @@ export const computeStats = (input: {
       scheduled: acc.scheduled,
       completed: acc.completed,
       missed: acc.scheduled - acc.completed,
-      currentStreak: currentStreakOf(versions, input.days, today, input.earliest),
+      currentStreak: currentStreakOf(versions, input.days, today, input.earliest, restDays),
       longestStreak: acc.longest,
     });
   }

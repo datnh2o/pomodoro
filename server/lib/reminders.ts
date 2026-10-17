@@ -5,6 +5,7 @@ import { currentTimeHHmm, dateKey } from "../../shared/utils/dates";
 import {
   DEFAULT_EVENING_REMINDER,
   isMainTask,
+  isRestDay,
   isScheduledOn,
   type DayDoc,
   type MainTask,
@@ -19,7 +20,8 @@ import {
  * để Netlify Function import được trực tiếp.
  */
 export interface ReminderEnv {
-  serviceAccount: string;
+  /** JSON service account: chuỗi (process.env) hoặc object (Nuxt runtimeConfig tự parse JSON) */
+  serviceAccount: string | Record<string, unknown>;
   vapidPublicKey: string;
   vapidPrivateKey: string;
   vapidSubject: string;
@@ -43,9 +45,12 @@ interface Message {
   tag: string;
 }
 
-const getDb = (serviceAccount: string) => {
+export const parseServiceAccount = (raw: string | Record<string, unknown>) =>
+  (typeof raw === "string" ? JSON.parse(raw) : raw) as Parameters<typeof cert>[0];
+
+const getDb = (serviceAccount: string | Record<string, unknown>) => {
   if (!getApps().length) {
-    initializeApp({ credential: cert(JSON.parse(serviceAccount)) });
+    initializeApp({ credential: cert(parseServiceAccount(serviceAccount)) });
   }
   return getFirestore();
 };
@@ -68,6 +73,7 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
   const workspaces = await db.collection("workspaces").get();
   for (const wsDoc of workspaces.docs) {
     const ws = { id: wsDoc.id, ...wsDoc.data() } as Workspace;
+    if (isRestDay(ws.restDays, today)) continue;
 
     // Không có thiết bị đăng ký thì bỏ qua sớm, đỡ tốn lượt đọc
     const subscriptions = await wsDoc.ref.collection("pushSubscriptions").get();

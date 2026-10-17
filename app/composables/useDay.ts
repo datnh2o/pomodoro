@@ -8,7 +8,7 @@ import {
   updateDoc,
   type Unsubscribe,
 } from "firebase/firestore";
-import { isScheduledOn, type DayDoc, type MainTask, type Proof } from "#shared/utils/models";
+import { isRestDay, isScheduledOn, type DayDoc, type MainTask, type Proof } from "#shared/utils/models";
 import { addDays, dateRange, todayKey, yesterdayKey } from "#shared/utils/dates";
 
 const emptyDay = (date: string): DayDoc => ({
@@ -103,14 +103,15 @@ export const useDay = () => {
         const existing = snap.exists() ? ({ ...emptyDay(date), ...snap.data() } as DayDoc) : emptyDay(date);
         if (existing.closed) continue;
 
-        const scheduled = mainTasks.value.filter((t) => isScheduledOn(t, date));
+        const rest = isRestDay(ws.restDays, date);
+        const scheduled = rest ? [] : mainTasks.value.filter((t) => isScheduledOn(t, date));
         const missed = scheduled.filter((t) => !existing.completions[t.id]).map((t) => t.id);
         const penalty = missed.length * ws.penaltyAmount;
         addedPenalty += penalty;
 
         await setDoc(
           ref,
-          { date, closed: true, missedTaskIds: missed, penalty, closedAt: Date.now() },
+          { date, closed: true, missedTaskIds: missed, penalty, closedAt: Date.now(), rest },
           { merge: true }
         );
       }

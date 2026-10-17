@@ -27,7 +27,15 @@ export interface Workspace {
   shareToken?: string | null;
   /** Giờ nhắc cuối ngày (HH:mm) nếu còn nhiệm vụ chính chưa xong; mặc định 21:00 */
   eveningReminderTime?: string | null;
+  /**
+   * Chế độ nghỉ: các ngày (YYYY-MM-DD) không tính nhiệm vụ chính, không phạt, không đứt streak.
+   * Chỉ được thêm cho hôm nay hoặc tương lai (không khai nghỉ lùi để tránh né phạt).
+   */
+  restDays?: string[];
 }
+
+export const isRestDay = (restDays: string[] | undefined, date: string): boolean =>
+  !!restDays && restDays.includes(date);
 
 export const DEFAULT_EVENING_REMINDER = "21:00";
 
@@ -59,6 +67,8 @@ export interface DayDoc {
   missedTaskIds: string[];
   penalty: number;
   closedAt?: number;
+  /** Ngày này được khai nghỉ lúc chốt */
+  rest?: boolean;
 }
 
 export interface MainTask {

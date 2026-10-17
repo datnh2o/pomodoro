@@ -84,7 +84,7 @@ const mergedDays = computed<DayMap>(() => {
 const stats = computed(() => {
   const ws = workspace.value;
   if (!ws) return null;
-  return computeStats({ from: range.value.from, to: range.value.to, days: mergedDays.value, tasks: tasks.value, earliest: ws.createdDate });
+  return computeStats({ from: range.value.from, to: range.value.to, days: mergedDays.value, tasks: tasks.value, earliest: ws.createdDate, restDays: ws.restDays });
 });
 
 const completionRate = computed(() =>
