@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+/* Cỡ chữ gốc lớn hơn mặc định (16px) để toàn bộ thang rem của Tailwind/Nuxt UI to ra một chút */
+html {
+  font-size: 17px;
+}
+
 /*
  * Bảng màu 3 chế độ của app (Tailwind v4 cấu hình bằng CSS):
  *   DEFAULT: nền trang, light: nền thẻ timer, dark: tab đang chọn.

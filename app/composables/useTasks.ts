@@ -182,7 +182,7 @@ export const useTasks = () => {
   };
 
   // ---- Nhiệm vụ phụ ----
-  const createSideTask = async (input: SideTaskInput) => {
+  const createSideTask = async (input: SideTaskInput): Promise<string> => {
     const data: Omit<SideTask, "id"> = {
       type: "side",
       title: input.title.trim(),
@@ -197,7 +197,8 @@ export const useTasks = () => {
       createdBy: requireUid(),
       createdAt: Date.now(),
     };
-    await addDoc(tasksRef(), data);
+    const ref = await addDoc(tasksRef(), data);
+    return ref.id;
   };
 
   const updateSideTask = async (task: SideTask, input: SideTaskInput) => {
@@ -226,6 +227,11 @@ export const useTasks = () => {
     await deleteDoc(taskRef(task.id));
   };
 
+  /** Xóa theo id (dùng cho "Hoàn tác" ngay sau khi thêm nhanh) */
+  const deleteTaskById = async (id: string) => {
+    await deleteDoc(taskRef(id));
+  };
+
   return {
     tasks,
     ready,
@@ -241,5 +247,6 @@ export const useTasks = () => {
     updateSideTask,
     setSideTaskDone,
     deleteSideTask,
+    deleteTaskById,
   };
 };

@@ -15,7 +15,7 @@ const onTimerFinished = () => selectMode(mode.value.next, { autoStart: true });
 </script>
 
 <template>
-  <section :class="['rounded-2xl p-4 text-white shadow-sm transition-colors duration-500', mode.bg]">
+  <section :class="['rounded-2xl p-4 text-white shadow-sm transition-colors duration-500', mode.bgCard]">
     <nav class="flex justify-center gap-1" aria-label="Chế độ">
       <button
         v-for="item in MODE_LIST"

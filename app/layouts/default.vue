@@ -64,19 +64,33 @@ const userMenu = computed(() => [
 ]);
 
 const booting = computed(() => !ready.value || (!!user.value && workspaceLoading.value && !workspace.value));
+
+// Trang Pomodoro phủ màu chế độ lên toàn màn hình (nền + header)
+const { mode } = useMode();
+const isPomodoro = computed(() => route.path === "/pomodoro");
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 text-gray-900">
-    <header class="sticky top-0 z-10 border-b border-gray-200 bg-white/90 backdrop-blur">
+  <div
+    :class="[
+      'min-h-screen transition-colors duration-500',
+      isPomodoro ? [mode.bg, 'text-white'] : 'bg-gray-50 text-gray-900',
+    ]"
+  >
+    <header
+      :class="[
+        'sticky top-0 z-10 border-b backdrop-blur transition-colors duration-500',
+        isPomodoro ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-white/90',
+      ]"
+    >
       <UContainer class="flex h-14 max-w-xl items-center justify-between">
-        <NuxtLink to="/" class="flex items-center gap-2 text-lg font-bold text-primary">
+        <NuxtLink to="/" :class="['flex items-center gap-2 text-lg font-bold', isPomodoro ? 'text-white' : 'text-primary']">
           <IconsTomato :size="22" />
           Nhiệm vụ hằng ngày
         </NuxtLink>
 
         <UDropdownMenu v-if="user" :items="userMenu" :content="{ align: 'end' }">
-          <button type="button" class="flex items-center gap-2 rounded-full p-1 hover:bg-gray-100" aria-label="Tài khoản">
+          <button type="button" :class="['flex items-center gap-2 rounded-full p-1', isPomodoro ? 'hover:bg-black/10' : 'hover:bg-gray-100']" aria-label="Tài khoản">
             <!-- Ảnh Google trả 429 nếu gửi kèm Referer, UAvatar bind $attrs xuống <img> -->
             <UAvatar
               :src="user.photoURL ?? undefined"
@@ -89,7 +103,7 @@ const booting = computed(() => !ready.value || (!!user.value && workspaceLoading
       </UContainer>
     </header>
 
-    <main class="pb-24">
+    <main class="pb-32">
       <UContainer class="max-w-xl py-5">
         <div v-if="booting" class="flex justify-center py-20 text-gray-400">
           <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin" />
@@ -101,6 +115,7 @@ const booting = computed(() => !ready.value || (!!user.value && workspaceLoading
       </UContainer>
     </main>
 
+    <VoiceQuickAdd v-if="user && workspace" />
     <AppTabBar v-if="user" />
   </div>
 </template>
