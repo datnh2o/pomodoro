@@ -43,7 +43,7 @@ const onSubmit = async (event: FormSubmitEvent<SubAccountInput>) => {
           <UInput v-model="state.email" type="email" size="lg" class="w-full" autocomplete="off" />
         </UFormField>
         <UFormField name="password" label="Mật khẩu" required description="Người dùng có thể đổi sau bằng Quên mật khẩu.">
-          <UInput v-model="state.password" type="text" size="lg" class="w-full" autocomplete="off" />
+          <PasswordInput v-model="state.password" autocomplete="new-password" />
         </UFormField>
         <div class="flex flex-col gap-2 rounded-lg bg-gray-50 p-3">
           <p class="text-sm font-medium">Quyền</p>

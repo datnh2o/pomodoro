@@ -94,12 +94,9 @@ const onForgot = async () => {
           <UInput v-model="state.email" type="email" size="lg" autocomplete="email" class="w-full" />
         </UFormField>
         <UFormField name="password" label="Mật khẩu">
-          <UInput
+          <PasswordInput
             v-model="state.password"
-            type="password"
-            size="lg"
             :autocomplete="mode === 'login' ? 'current-password' : 'new-password'"
-            class="w-full"
           />
         </UFormField>
 
