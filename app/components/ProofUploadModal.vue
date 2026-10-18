@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { MainTask, Proof } from "#shared/utils/models";
+import type { Proof } from "#shared/utils/models";
 
-const props = defineProps<{ task: MainTask | null; folder: string }>();
+/** Dùng chung cho nhiệm vụ chính và phụ: chỉ cần tiêu đề để hiển thị */
+const props = defineProps<{ task: { title: string } | null; folder: string }>();
 const open = defineModel<boolean>("open", { default: false });
 const emit = defineEmits<{ confirm: [proofs: Proof[]]; queue: [files: File[]] }>();
 

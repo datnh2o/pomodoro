@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const emit = defineEmits<{ add: [title: string] }>();
+const emit = defineEmits<{ add: [title: string]; options: [title: string] }>();
 
 const { showError } = useErrorToast();
 const toast = useToast();
@@ -18,6 +18,12 @@ const submit = async () => {
   } finally {
     submitting.value = false;
   }
+};
+
+/** Mở form đầy đủ (ảnh, giờ nhắc, ghi chú) với tiêu đề đã gõ */
+const openOptions = () => {
+  emit("options", title.value.trim());
+  title.value = "";
 };
 
 const dictate = async () => {
@@ -71,6 +77,16 @@ watch(interim, (text) => {
       :icon="listening ? 'i-lucide-mic-off' : 'i-lucide-mic'"
       :aria-label="listening ? 'Dừng nghe' : 'Nói để thêm'"
       @click="dictate"
+    />
+    <UButton
+      type="button"
+      color="neutral"
+      variant="outline"
+      size="lg"
+      icon="i-lucide-sliders-horizontal"
+      aria-label="Thêm với tùy chọn ảnh, giờ nhắc"
+      title="Tùy chọn: ảnh chứng minh, giờ nhắc, ghi chú"
+      @click="openOptions"
     />
     <UButton type="submit" size="lg" icon="i-lucide-plus" :disabled="!title.trim()" aria-label="Thêm" />
   </form>

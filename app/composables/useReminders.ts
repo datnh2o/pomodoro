@@ -1,4 +1,4 @@
-import type { MainTask } from "#shared/utils/models";
+import type { ReminderTarget } from "#shared/utils/models";
 import { currentTimeHHmm } from "#shared/utils/dates";
 
 /**
@@ -20,7 +20,7 @@ export const useReminders = () => {
     permission.value = await Notification.requestPermission();
   };
 
-  const notify = (task: MainTask) => {
+  const notify = (task: ReminderTarget) => {
     toast.add({
       title: `Đến giờ: ${task.title}`,
       description: task.requiresProof ? "Nhớ chụp ảnh chứng minh khi xong." : undefined,
@@ -37,8 +37,8 @@ export const useReminders = () => {
     }
   };
 
-  /** Gọi định kỳ với danh sách nhiệm vụ chính hôm nay chưa hoàn thành */
-  const check = (pendingTasks: MainTask[]) => {
+  /** Gọi định kỳ với danh sách việc (chính + phụ) hôm nay chưa hoàn thành */
+  const check = (pendingTasks: ReminderTarget[]) => {
     const now = currentTimeHHmm();
     for (const task of pendingTasks) {
       if (task.reminderTime !== now) continue;

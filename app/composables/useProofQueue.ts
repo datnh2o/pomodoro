@@ -1,4 +1,4 @@
-import type { MainTask, Proof } from "#shared/utils/models";
+import type { MainTask, Proof, SideTask, Task } from "#shared/utils/models";
 
 /**
  * Hàng đợi ảnh chứng minh khi mất mạng: lưu file vào IndexedDB, khi có mạng lại thì tải lên
@@ -8,6 +8,8 @@ export interface QueuedProof {
   id: string;
   workspaceId: string;
   date: string;
+  /** main: ghi vào days/{date}; side: ghi lên chính tài liệu nhiệm vụ phụ */
+  kind: "main" | "side";
   taskId: string;
   taskTitle: string;
   files: Blob[];
@@ -45,6 +47,7 @@ export const useProofQueue = () => {
   const { workspace } = useWorkspace();
   const { upload } = useProofUpload();
   const { complete } = useDay();
+  const { setSideTaskDone } = useTasks();
 
   const items = useState<QueuedProof[]>("proofQueue:items", () => []);
   const flushing = useState<boolean>("proofQueue:flushing", () => false);
@@ -59,13 +62,14 @@ export const useProofQueue = () => {
     }
   };
 
-  const enqueue = async (task: MainTask, date: string, files: Blob[]) => {
+  const enqueue = async (task: MainTask | SideTask, date: string, files: Blob[]) => {
     const ws = workspace.value;
     if (!ws) throw new Error("Chưa có workspace");
     const entry: QueuedProof = {
       id: `${date}:${task.id}:${Date.now()}`,
       workspaceId: ws.id,
       date,
+      kind: task.type,
       taskId: task.id,
       taskTitle: task.title,
       files,
@@ -85,7 +89,7 @@ export const useProofQueue = () => {
     items.value.some((i) => i.taskId === taskId && i.date === date && i.workspaceId === workspace.value?.id);
 
   /** Tải các mục đang chờ. Trả về số mục đã xử lý xong. */
-  const flush = async (tasks: MainTask[]): Promise<number> => {
+  const flush = async (tasks: Task[]): Promise<number> => {
     const ws = workspace.value;
     if (!ws || flushing.value || !navigator.onLine) return 0;
     const mine = items.value.filter((i) => i.workspaceId === ws.id);
@@ -104,7 +108,8 @@ export const useProofQueue = () => {
           for (const file of entry.files) {
             proofs.push(await upload(new File([file], "proof.jpg", { type: file.type || "image/jpeg" }), `${ws.id}/${entry.date}`));
           }
-          await complete(task, proofs, entry.date);
+          if (task.type === "main") await complete(task, proofs, entry.date);
+          else await setSideTaskDone(task, true, proofs, entry.date);
           await remove(entry.id);
           done++;
         } catch (error) {

@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { isRestDay, type MainTask, type Proof, type SideTask } from "#shared/utils/models";
+import { isRestDay, isSidePendingOn, type MainTask, type Proof, type ReminderTarget, type SideTask } from "#shared/utils/models";
+import type { SideTaskInput } from "~/composables/useTasks";
 import type { DayMap } from "~/composables/useHistory";
 import { STREAK_LOOKBACK_DAYS } from "~/composables/useHistory";
 import { addDays, formatDateVi, formatMoney } from "#shared/utils/dates";
 
 const { user } = useAuth();
 const { workspace, can } = useWorkspace();
-const { ready: tasksReady, mainTasksFor, sideTasksFor, createSideTask, setSideTaskDone, deleteSideTask } = useTasks();
+const { ready: tasksReady, mainTasksFor, sideTasksFor, createSideTask, updateSideTask, setSideTaskDone, deleteSideTask } = useTasks();
 const { today, dayDoc, isCompleted, completionOf, complete, uncomplete, closePastDays } = useDay();
 const { showError } = useErrorToast();
 const { check: checkReminders } = useReminders();
@@ -21,7 +22,7 @@ watch(
   async ([isOnline, isReady, wsId, count]) => {
     if (!isOnline || !isReady || !wsId || !count) return;
     try {
-      const done = await flushQueue(tasks.value.filter((t): t is MainTask => t.type === "main"));
+      const done = await flushQueue(tasks.value);
       if (done) toast.add({ title: `Đã tải ${done} nhiệm vụ chờ ảnh`, color: "success", icon: "i-lucide-cloud-upload" });
     } catch (error) {
       console.warn("flush queue", error);
@@ -69,6 +70,11 @@ const sideToday = computed(() => sideTasksFor(today.value));
 const doneMain = computed(() => mainToday.value.filter((t) => isCompleted(t.id)));
 const pendingMain = computed(() => mainToday.value.filter((t) => !isCompleted(t.id)));
 const atRisk = computed(() => pendingMain.value.length * (workspace.value?.penaltyAmount ?? 0));
+/** Việc cần nhắc trong app: chính chưa xong + phụ chưa xong có giờ nhắc */
+const reminderTargets = computed<ReminderTarget[]>(() => [
+  ...pendingMain.value,
+  ...sideToday.value.filter((t) => isSidePendingOn(t, today.value) && t.reminderTime),
+]);
 const progress = computed(() =>
   mainToday.value.length ? Math.round((doneMain.value.length / mainToday.value.length) * 100) : 0
 );
@@ -90,12 +96,12 @@ watch(
 // Nhắc trong app khi tới giờ
 let reminderClock: ReturnType<typeof setInterval> | undefined;
 onMounted(() => {
-  reminderClock = setInterval(() => checkReminders(pendingMain.value), 20_000);
+  reminderClock = setInterval(() => checkReminders(reminderTargets.value), 20_000);
 });
 onBeforeUnmount(() => clearInterval(reminderClock));
 
-// ---- Hoàn thành nhiệm vụ chính ----
-const proofTask = ref<MainTask | null>(null);
+// ---- Hoàn thành (chính và phụ cần ảnh dùng chung modal) ----
+const proofTask = ref<MainTask | SideTask | null>(null);
 const proofOpen = ref(false);
 
 const onCompleteRequest = async (task: MainTask) => {
@@ -115,7 +121,8 @@ const onProofConfirm = async (proofs: Proof[]) => {
   const task = proofTask.value;
   if (!task) return;
   try {
-    await complete(task, proofs);
+    if (task.type === "main") await complete(task, proofs);
+    else await setSideTaskDone(task, true, proofs);
     toast.add({ title: "Đã hoàn thành", description: task.title, color: "success", icon: "i-lucide-circle-check" });
   } catch (error) {
     showError("Không tích được", error);
@@ -131,14 +138,40 @@ const onUncomplete = async (task: MainTask) => {
 };
 
 // ---- Nhiệm vụ phụ ----
+const sideFormOpen = ref(false);
+const sideEditing = ref<SideTask | null>(null);
+const sideInitialTitle = ref("");
+
 const onAddSide = async (title: string) => {
   try {
-    await createSideTask(title);
+    await createSideTask({ title });
   } catch (error) {
     showError("Không thêm được", error);
   }
 };
+const openSideOptions = (title: string) => {
+  sideEditing.value = null;
+  sideInitialTitle.value = title;
+  sideFormOpen.value = true;
+};
+const openSideEdit = (task: SideTask) => {
+  sideEditing.value = task;
+  sideFormOpen.value = true;
+};
+const onSaveSide = async (input: Required<SideTaskInput>) => {
+  try {
+    if (sideEditing.value) await updateSideTask(sideEditing.value, input);
+    else await createSideTask(input);
+  } catch (error) {
+    showError("Không lưu được", error);
+  }
+};
 const onToggleSide = async (task: SideTask, done: boolean) => {
+  if (done && task.requiresProof) {
+    proofTask.value = task;
+    proofOpen.value = true;
+    return;
+  }
   try {
     await setSideTaskDone(task, done);
   } catch (error) {
@@ -222,17 +255,19 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
           :task="task"
           :today="today"
           :can-act="can('add')"
-          :can-delete="can('edit') || task.createdBy === user?.uid"
+          :can-edit="can('edit') || task.createdBy === user?.uid"
           @toggle="(done) => onToggleSide(task, done)"
+          @edit="openSideEdit(task)"
           @delete="onDeleteSide(task)"
         />
         <p v-if="tasksReady && !sideToday.length" class="py-2 text-sm text-gray-400">
           Chưa có nhiệm vụ phụ. Việc chưa xong sẽ tự dồn sang ngày hôm sau.
         </p>
-        <SideTaskInput v-if="can('add')" class="mt-1" @add="onAddSide" />
+        <SideTaskInput v-if="can('add')" class="mt-1" @add="onAddSide" @options="openSideOptions" />
       </div>
     </section>
 
     <ProofUploadModal v-model:open="proofOpen" :task="proofTask" :folder="proofFolder" @confirm="onProofConfirm" @queue="onQueueProofs" />
+    <SideTaskForm v-model:open="sideFormOpen" :task="sideEditing" :initial-title="sideInitialTitle" @save="onSaveSide" />
   </div>
 </template>

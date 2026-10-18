@@ -13,7 +13,9 @@ import {
   isMainTask,
   isScheduledOn,
   isSideTask,
+  normalizeTask,
   type MainTask,
+  type Proof,
   type SideTask,
   type Task,
 } from "#shared/utils/models";
@@ -25,6 +27,13 @@ export interface MainTaskInput {
   requiresProof: boolean;
   weekdays: number[];
   reminderTime: string | null;
+}
+
+export interface SideTaskInput {
+  title: string;
+  note?: string;
+  requiresProof?: boolean;
+  reminderTime?: string | null;
 }
 
 /** Nhiệm vụ chính + phụ của workspace, cập nhật realtime. */
@@ -55,7 +64,7 @@ export const useTasks = () => {
     unsubscribe.value = onSnapshot(
       collection($firebase.firestore, "workspaces", workspaceId, "tasks"),
       (snap) => {
-        tasks.value = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
+        tasks.value = snap.docs.map((d) => normalizeTask({ id: d.id, ...d.data() } as Task));
         ready.value = true;
       },
       (error) => console.error("tasks listener", error)
@@ -145,23 +154,43 @@ export const useTasks = () => {
   };
 
   // ---- Nhiệm vụ phụ ----
-  const createSideTask = async (title: string) => {
+  const createSideTask = async (input: SideTaskInput) => {
     const data: Omit<SideTask, "id"> = {
       type: "side",
-      title: title.trim(),
+      title: input.title.trim(),
+      note: input.note?.trim() ?? "",
+      requiresProof: input.requiresProof ?? false,
+      reminderTime: input.reminderTime || null,
       createdDate: todayKey(),
       doneDate: null,
       doneAt: null,
+      doneBy: null,
+      proofs: [],
       createdBy: requireUid(),
       createdAt: Date.now(),
     };
     await addDoc(tasksRef(), data);
   };
 
-  const setSideTaskDone = async (task: SideTask, done: boolean) => {
+  const updateSideTask = async (task: SideTask, input: SideTaskInput) => {
     await updateDoc(taskRef(task.id), {
-      doneDate: done ? todayKey() : null,
+      title: input.title.trim(),
+      note: input.note?.trim() ?? "",
+      requiresProof: input.requiresProof ?? false,
+      reminderTime: input.reminderTime || null,
+    });
+  };
+
+  /** Tích/bỏ tích nhiệm vụ phụ. Việc cần ảnh phải kèm ít nhất 1 ảnh. */
+  const setSideTaskDone = async (task: SideTask, done: boolean, proofs: Proof[] = [], date: string = todayKey()) => {
+    if (done && task.requiresProof && proofs.length === 0) {
+      throw new Error("Nhiệm vụ này cần ít nhất một ảnh chứng minh");
+    }
+    await updateDoc(taskRef(task.id), {
+      doneDate: done ? date : null,
       doneAt: done ? Date.now() : null,
+      doneBy: done ? requireUid() : null,
+      proofs: done ? proofs : [],
     });
   };
 
@@ -181,6 +210,7 @@ export const useTasks = () => {
     updateMainTask,
     archiveMainTask,
     createSideTask,
+    updateSideTask,
     setSideTaskDone,
     deleteSideTask,
   };

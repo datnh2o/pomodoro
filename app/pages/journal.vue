@@ -182,10 +182,17 @@ const selectedSide = computed(() =>
               </a>
             </div>
           </li>
-          <li v-for="task in selectedSide" :key="task.id" class="flex items-center gap-2 rounded-xl bg-white p-3 text-sm shadow-sm ring-1 ring-gray-200">
-            <UIcon name="i-lucide-check" class="h-4 w-4 text-green-600" />
-            <span>{{ task.title }}</span>
-            <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">Phụ</UBadge>
+          <li v-for="task in selectedSide" :key="task.id" class="rounded-xl bg-white p-3 text-sm shadow-sm ring-1 ring-gray-200">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-check" class="h-4 w-4 text-green-600" />
+              <span>{{ task.title }}</span>
+              <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">Phụ</UBadge>
+            </div>
+            <div v-if="task.proofs?.length" class="mt-2 flex flex-wrap gap-1.5">
+              <a v-for="proof in task.proofs" :key="proof.publicId" :href="proof.url" target="_blank" rel="noopener" class="block h-16 w-16 overflow-hidden rounded-lg border border-gray-200">
+                <img :src="thumbnailUrl(proof.url, 128)" alt="Ảnh chứng minh" class="h-full w-full object-cover" loading="lazy" />
+              </a>
+            </div>
           </li>
         </ul>
       </template>

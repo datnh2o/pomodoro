@@ -7,8 +7,12 @@ import {
   isMainTask,
   isRestDay,
   isScheduledOn,
+  isSidePendingOn,
+  isSideTask,
+  normalizeTask,
   type DayDoc,
   type MainTask,
+  type SideTask,
   type PushSubscriptionDoc,
   type Task,
   type Workspace,
@@ -80,21 +84,23 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
     if (subscriptions.empty) continue;
     result.workspacesChecked++;
 
-    const tasksSnap = await wsDoc.ref.collection("tasks").where("type", "==", "main").get();
-    const tasks = tasksSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task).filter(isMainTask) as MainTask[];
-    const scheduled = tasks.filter((t) => isScheduledOn(t, today));
-    if (!scheduled.length) continue;
+    const tasksSnap = await wsDoc.ref.collection("tasks").get();
+    const allTasks = tasksSnap.docs.map((d) => normalizeTask({ id: d.id, ...d.data() } as Task));
+    const scheduled = (allTasks.filter(isMainTask) as MainTask[]).filter((t) => isScheduledOn(t, today));
+    // Nhiệm vụ phụ chưa xong có giờ nhắc: nhắc mỗi ngày cho tới khi xong
+    const pendingSide = (allTasks.filter(isSideTask) as SideTask[]).filter((t) => isSidePendingOn(t, today) && t.reminderTime);
+    if (!scheduled.length && !pendingSide.length) continue;
 
     const daySnap = await wsDoc.ref.collection("days").doc(today).get();
     const completions = ((daySnap.data() as Partial<DayDoc> | undefined)?.completions ?? {}) as DayDoc["completions"];
     const pending = scheduled.filter((t) => !completions[t.id]);
-    if (!pending.length) continue;
+    if (!pending.length && !pendingSide.length) continue;
 
     const logRef = wsDoc.ref.collection("reminderLog").doc(today);
     const sent = ((await logRef.get()).data() ?? {}) as Record<string, unknown>;
 
     const messages: Message[] = [];
-    for (const task of pending) {
+    for (const task of [...pending, ...pendingSide]) {
       const key = `task:${task.id}`;
       if (task.reminderTime && minutes.includes(task.reminderTime) && !sent[key]) {
         messages.push({
@@ -106,10 +112,11 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
       }
     }
     const evening = ws.eveningReminderTime ?? DEFAULT_EVENING_REMINDER;
-    if (minutes.includes(evening) && !sent.evening) {
+    if (pending.length && minutes.includes(evening) && !sent.evening) {
+      const sideNote = pendingSide.length ? ` (+${pendingSide.length} việc phụ)` : "";
       messages.push({
         key: "evening",
-        title: `Còn ${pending.length} nhiệm vụ chưa xong hôm nay`,
+        title: `Còn ${pending.length} nhiệm vụ chưa xong hôm nay${sideNote}`,
         body: `Bỏ lỡ sẽ mất ${formatMoney(pending.length * ws.penaltyAmount)}: ${pending.map((t) => t.title).join(", ")}`,
         tag: "evening",
       });

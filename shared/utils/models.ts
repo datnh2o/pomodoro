@@ -96,13 +96,45 @@ export interface SideTask {
   id: string;
   type: "side";
   title: string;
+  note: string;
+  /** Cần ảnh chứng minh khi tích (không liên quan tiền phạt) */
+  requiresProof: boolean;
+  /** Giờ nhắc HH:mm, nhắc mỗi ngày cho tới khi xong */
+  reminderTime: string | null;
   /** Ngày tạo; chưa xong thì tự hiện lại các ngày sau */
   createdDate: string;
   doneDate: string | null;
   doneAt: number | null;
+  doneBy?: string | null;
+  proofs?: Proof[];
   createdBy: string;
   createdAt: number;
 }
+
+/** Điền mặc định cho tài liệu nhiệm vụ phụ cũ (trước khi có ảnh/giờ nhắc) */
+export const normalizeTask = (task: Task): Task => {
+  if (task.type !== "side") return task;
+  const raw = task as Partial<SideTask> & { id: string; type: "side" };
+  return {
+    ...task,
+    note: raw.note ?? "",
+    requiresProof: raw.requiresProof ?? false,
+    reminderTime: raw.reminderTime ?? null,
+    proofs: raw.proofs ?? [],
+  };
+};
+
+/** Một việc có thể nhắc giờ: nhiệm vụ chính hoặc phụ */
+export interface ReminderTarget {
+  id: string;
+  title: string;
+  requiresProof: boolean;
+  reminderTime: string | null;
+}
+
+/** Nhiệm vụ phụ còn hiện trong ngày `date` (chưa xong, tạo từ ngày đó trở về trước) */
+export const isSidePendingOn = (task: SideTask, date: string): boolean =>
+  task.doneDate === null && task.createdDate <= date;
 
 export type Task = MainTask | SideTask;
 
