@@ -243,10 +243,9 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
     <UTabs
       v-model="tab"
       :items="tabItems"
-      orientation="vertical"
       color="primary"
       variant="pill"
-      :ui="{ root: 'items-start gap-3', list: 'w-24 shrink-0', content: 'min-w-0 flex-1' }"
+      :ui="{ root: 'gap-3', content: 'min-w-0' }"
     >
     <template #main>
     <!-- Nhiệm vụ chính -->
