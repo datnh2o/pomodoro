@@ -200,6 +200,7 @@ const savePenalty = async () => {
 };
 
 // ---- Tài khoản ----
+const profileOpen = ref(false);
 const onChangePassword = async () => {
   if (!user.value?.email) return;
   try {
@@ -384,15 +385,22 @@ const onChangePassword = async () => {
     <!-- Tài khoản -->
     <section class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Tài khoản</h2>
-      <p class="font-medium">{{ user?.displayName ?? "Chưa đặt tên" }}</p>
-      <p class="text-sm text-gray-500">{{ user?.email }}</p>
-      <p class="mt-1 text-xs text-gray-400">Workspace: {{ workspace?.name }} · Vai trò: {{ isOwner ? "chủ sở hữu" : "thành viên" }}</p>
+      <div class="flex items-center gap-3">
+        <UAvatar :src="user?.photoURL ?? undefined" :alt="user?.displayName ?? 'Tài khoản'" size="xl" referrerpolicy="no-referrer" />
+        <div class="min-w-0">
+          <p class="truncate font-medium">{{ user?.displayName ?? "Chưa đặt tên" }}</p>
+          <p class="truncate text-sm text-gray-500">{{ user?.email }}</p>
+        </div>
+      </div>
+      <p class="mt-2 text-xs text-gray-400">Workspace: {{ workspace?.name }} · Vai trò: {{ isOwner ? "chủ sở hữu" : "thành viên" }}</p>
       <div class="mt-3 flex flex-wrap gap-2">
+        <UButton icon="i-lucide-user-round-pen" @click="profileOpen = true">Cập nhật hồ sơ</UButton>
         <UButton color="neutral" variant="outline" icon="i-lucide-key-round" @click="onChangePassword">Đổi mật khẩu</UButton>
       </div>
     </section>
 
     <MainTaskForm v-model:open="formOpen" :task="editing" @save="onSave" />
     <SubAccountForm v-model:open="subAccountOpen" @save="onCreateSubAccount" />
+    <ProfileForm v-model:open="profileOpen" />
   </div>
 </template>

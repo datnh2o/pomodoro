@@ -120,8 +120,19 @@ export const useWorkspace = () => {
     await updateDoc(doc($firebase.firestore, "workspaces", workspace.value.id), { restDays: arrayRemove(date) });
   };
 
+  /** Cập nhật tên/email hiển thị của chính mình trong danh sách thành viên */
+  const updateOwnMemberInfo = async (info: { displayName: string | null; email: string | null }) => {
+    const ws = workspace.value;
+    const uid = user.value?.uid;
+    if (!ws || !uid || !ws.members[uid]) return;
+    await updateDoc(doc($firebase.firestore, "workspaces", ws.id), {
+      [`members.${uid}.displayName`]: info.displayName,
+      [`members.${uid}.email`]: info.email,
+    });
+  };
+
   return {
     workspace, loading, permissions, isOwner, can, bind, unbind,
-    updatePenaltyAmount, updateEveningReminder, addRestDay, removeRestDay,
+    updatePenaltyAmount, updateEveningReminder, addRestDay, removeRestDay, updateOwnMemberInfo,
   };
 };

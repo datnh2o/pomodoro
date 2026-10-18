@@ -215,6 +215,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
     <!-- Đầu trang: ngày, tiến độ, tiền -->
     <section class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
       <p class="text-sm text-gray-500">{{ formatDateVi(today) }}</p>
+      <WeatherBadge class="mt-0.5" />
       <div class="mt-1 flex items-end justify-between gap-3">
         <p class="text-2xl font-bold">
           {{ doneMain.length }}/{{ mainToday.length }}

@@ -45,10 +45,18 @@ service cloud.firestore {
 
       // Owner sửa mọi thứ (thành viên, mức phạt, ...).
       // Thành viên có quyền `add` chỉ được cập nhật kết quả chốt ngày.
+      // Mọi thành viên được sửa tên/email hiển thị của chính mình (không đổi quyền).
       allow update: if isOwner(wsId)
         || (can(wsId, 'add')
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['lastClosedDate', 'penaltyTotal']));
+                 .hasOnly(['lastClosedDate', 'penaltyTotal']))
+        || (can(wsId, 'view')
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+            && request.resource.data.members.diff(resource.data.members).affectedKeys()
+                 .hasOnly([request.auth.uid])
+            && request.resource.data.members[request.auth.uid].view == resource.data.members[request.auth.uid].view
+            && request.resource.data.members[request.auth.uid].add == resource.data.members[request.auth.uid].add
+            && request.resource.data.members[request.auth.uid].edit == resource.data.members[request.auth.uid].edit);
 
       allow delete: if false;
 
