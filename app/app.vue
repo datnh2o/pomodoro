@@ -11,5 +11,6 @@ const toaster: ToasterProps = { position: "top-center" };
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
+    <ConfirmDialog />
   </UApp>
 </template>

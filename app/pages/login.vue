@@ -74,12 +74,12 @@ const onForgot = async () => {
         </div>
       </template>
 
-      <div class="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-gray-100 p-1 text-sm font-medium">
+      <div class="mb-4 grid grid-cols-2 gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 text-sm font-medium">
         <button
           v-for="item in [{ value: 'login', label: 'Đăng nhập' }, { value: 'register', label: 'Tạo tài khoản' }] as const"
           :key="item.value"
           type="button"
-          :class="['rounded-md py-1.5 transition', mode === item.value ? 'bg-white shadow' : 'text-gray-500']"
+          :class="['rounded-md py-1.5 transition', mode === item.value ? 'bg-white dark:bg-gray-900 shadow' : 'text-gray-500 dark:text-gray-400']"
           @click="mode = item.value"
         >
           {{ item.label }}

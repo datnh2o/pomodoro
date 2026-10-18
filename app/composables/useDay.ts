@@ -9,6 +9,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { isRestDay, isScheduledOn, type DayDoc, type MainTask, type Proof } from "#shared/utils/models";
+import { computeDayClose } from "#shared/utils/penalty";
 import { addDays, dateRange, todayKey, yesterdayKey } from "#shared/utils/dates";
 
 const emptyDay = (date: string): DayDoc => ({
@@ -97,6 +98,7 @@ export const useDay = () => {
     closing.value = true;
     try {
       let addedPenalty = 0;
+      let missStreak = ws.missStreak ?? 0;
       for (const date of dateRange(from, yesterday)) {
         const ref = dayRef(ws.id, date);
         const snap = await getDoc(ref);
@@ -104,20 +106,36 @@ export const useDay = () => {
         if (existing.closed) continue;
 
         const rest = isRestDay(ws.restDays, date);
-        const scheduled = rest ? [] : mainTasks.value.filter((t) => isScheduledOn(t, date));
-        const missed = scheduled.filter((t) => !existing.completions[t.id]).map((t) => t.id);
-        const penalty = missed.length * ws.penaltyAmount;
-        addedPenalty += penalty;
+        // Cùng thuật toán với server (shared/utils/penalty.ts): phạt tăng dần theo chuỗi lỡ
+        const result = computeDayClose({
+          scheduledIds: rest ? [] : mainTasks.value.filter((t) => isScheduledOn(t, date)).map((t) => t.id),
+          completedIds: Object.keys(existing.completions),
+          rest,
+          prevMissStreak: missStreak,
+          penaltyAmount: ws.penaltyAmount,
+          escalation: ws.penaltyEscalation ?? true,
+        });
+        missStreak = result.missStreak;
+        addedPenalty += result.penalty;
 
         await setDoc(
           ref,
-          { date, closed: true, missedTaskIds: missed, penalty, closedAt: Date.now(), rest },
+          {
+            date,
+            closed: true,
+            missedTaskIds: result.missedTaskIds,
+            penalty: result.penalty,
+            multiplier: result.multiplier,
+            closedAt: Date.now(),
+            rest,
+          },
           { merge: true }
         );
       }
       await updateDoc(doc($firebase.firestore, "workspaces", ws.id), {
         lastClosedDate: yesterday,
         penaltyTotal: increment(addedPenalty),
+        missStreak,
       });
     } finally {
       closing.value = false;

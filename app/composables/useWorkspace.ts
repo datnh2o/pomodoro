@@ -1,6 +1,12 @@
 import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, setDoc, updateDoc, type Unsubscribe } from "firebase/firestore";
-import { OWNER_PERMISSIONS, type MemberPermissions, type Workspace } from "#shared/utils/models";
-import { todayKey } from "#shared/utils/dates";
+import {
+  DEFAULT_REST_CUTOFF,
+  DEFAULT_REST_LIMIT,
+  OWNER_PERMISSIONS,
+  type MemberPermissions,
+  type Workspace,
+} from "#shared/utils/models";
+import { currentTimeHHmm, todayKey } from "#shared/utils/dates";
 
 const DEFAULT_PENALTY = 10_000;
 
@@ -107,11 +113,46 @@ export const useWorkspace = () => {
     });
   };
 
-  /** Khai ngày nghỉ: chỉ hôm nay hoặc tương lai, để không khai lùi nhằm né phạt */
+  /** Số ngày nghỉ đã khai trong tháng của `date` */
+  const restDaysInMonth = (date: string) =>
+    (workspace.value?.restDays ?? []).filter((d) => d.slice(0, 7) === date.slice(0, 7)).length;
+
+  /**
+   * Khai ngày nghỉ với ba ràng buộc chống lách: không khai lùi, hôm nay chỉ khai trước giờ
+   * cắt (mặc định 10:00), và không quá hạn mức mỗi tháng (mặc định 3).
+   */
   const addRestDay = async (date: string) => {
+    const ws = workspace.value;
+    if (!ws) return;
+    const today = todayKey();
+    if (date < today) throw new Error("Chỉ khai nghỉ cho hôm nay hoặc ngày sau, không khai lùi.");
+    const cutoff = ws.restCutoffTime ?? DEFAULT_REST_CUTOFF;
+    if (date === today && currentTimeHHmm() >= cutoff) {
+      throw new Error(`Nghỉ hôm nay phải khai trước ${cutoff}. Giờ chỉ còn khai được cho ngày mai trở đi.`);
+    }
+    const limit = ws.restLimitPerMonth ?? DEFAULT_REST_LIMIT;
+    if (restDaysInMonth(date) >= limit) {
+      throw new Error(`Đã dùng hết ${limit} ngày nghỉ của tháng ${Number(date.slice(5, 7))}.`);
+    }
+    await updateDoc(doc($firebase.firestore, "workspaces", ws.id), { restDays: arrayUnion(date) });
+  };
+
+  /** Cập nhật các tùy chọn kỷ luật/nhắc nhở (chỉ owner, rules kiểm soát) */
+  const updateSettings = async (
+    patch: Partial<
+      Pick<
+        Workspace,
+        | "penaltyEscalation"
+        | "restLimitPerMonth"
+        | "restCutoffTime"
+        | "morningReminderTime"
+        | "supervisorEmail"
+        | "weeklyReportTime"
+      >
+    >
+  ) => {
     if (!workspace.value) return;
-    if (date < todayKey()) throw new Error("Chỉ khai nghỉ cho hôm nay hoặc ngày sau, không khai lùi.");
-    await updateDoc(doc($firebase.firestore, "workspaces", workspace.value.id), { restDays: arrayUnion(date) });
+    await updateDoc(doc($firebase.firestore, "workspaces", workspace.value.id), { ...patch });
   };
 
   const removeRestDay = async (date: string) => {
@@ -134,5 +175,6 @@ export const useWorkspace = () => {
   return {
     workspace, loading, permissions, isOwner, can, bind, unbind,
     updatePenaltyAmount, updateEveningReminder, addRestDay, removeRestDay, updateOwnMemberInfo,
+    restDaysInMonth, updateSettings,
   };
 };

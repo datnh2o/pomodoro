@@ -111,6 +111,19 @@ chỉ đọc: `workspaces.shareToken` + API `/api/share/{token}` (firebase-admin
 `workspace.restDays[]`: owner khai nghỉ cho hôm nay hoặc tương lai (không khai lùi). Ngày nghỉ không
 lên lịch nhiệm vụ chính, không phạt, không đứt streak, không gửi nhắc; Nhật ký hiện ô "Nghỉ".
 
+### Đợt siết kỷ luật & trải nghiệm (2026-10-18, xong)
+- Chỉ chủ sở hữu tích nhiệm vụ chính (rules + UI); hiện "X tích" nếu người khác tích.
+- Ảnh: chặn nộp lại ảnh đã dùng (so `etag` Cloudinary trong 120 ngày), xem ảnh có đóng dấu giờ chụp,
+  bấm tích là mở camera ngay.
+- Chế độ nghỉ có hạn mức/tháng (mặc định 3) và giờ cắt khai nghỉ hôm nay (mặc định 10:00).
+- Hạn giờ riêng từng việc (`deadlineTime`): quá giờ không tích được, nhắc đẩy trước 30 phút; đổi hạn
+  chỉ hiệu lực từ ngày mai.
+- Chốt ngày trên server (job mỗi phút) với thuật toán dùng chung `shared/utils/penalty.ts`; phạt tăng
+  dần theo chuỗi lỡ (×2, ×4 tối đa), lưu `multiplier` trên ngày và `missStreak` trên workspace.
+- Email tổng kết tuần cho người giám sát (Chủ nhật, qua Resend, tùy chọn).
+- Badge số việc trên icon app, nhắc buổi sáng, thẻ "Việc tiếp theo", ăn mừng khi xong hết kèm chuỗi
+  ngày không mất tiền, dark mode theo hệ thống + chọn trong Cài đặt, hộp xác nhận riêng, banner ngoại tuyến.
+
 ## 6. Kỹ thuật & giới hạn trên iPhone
 
 - **Ảnh**: bucket Firebase hiện tại (`*.firebasestorage.app`) cần gói Blaze. Phương án miễn phí

@@ -9,9 +9,27 @@ const props = defineProps<{
   canEdit: boolean;
 }>();
 
-const emit = defineEmits<{ toggle: [done: boolean]; edit: []; delete: [] }>();
+const emit = defineEmits<{ toggle: [done: boolean]; edit: []; delete: []; proofFiles: [files: File[]] }>();
 
-const { thumbnailUrl } = useProofUpload();
+const { thumbnailUrl, proofViewUrl } = useProofUpload();
+
+// Việc cần ảnh: mở camera ngay trong cử chỉ bấm
+const cameraInput = ref<HTMLInputElement | null>(null);
+const onToggleClick = () => {
+  if (!props.canAct) return;
+  if (!done.value && props.task.requiresProof) {
+    cameraInput.value?.click();
+    return;
+  }
+  emit("toggle", !done.value);
+};
+const onCameraPick = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+  input.value = "";
+  if (files.length) emit("proofFiles", files);
+  else emit("toggle", true);
+};
 const done = computed(() => props.task.doneDate !== null);
 const carriedOver = computed(() => !done.value && props.task.createdDate < props.today);
 
@@ -33,13 +51,14 @@ const menu = computed(() => [
     @swipe-right="emit('edit')"
     @swipe-left="emit('delete')"
   >
-  <div :class="['flex items-start gap-3 rounded-xl border bg-white p-3 shadow-sm', done ? 'border-green-200 bg-green-50/60' : 'border-gray-200']">
+  <div :class="['flex items-start gap-3 rounded-xl border bg-white dark:bg-gray-900 p-3 shadow-sm', done ? 'border-green-200 dark:border-green-900 bg-green-50/60 dark:bg-green-950/40' : 'border-gray-200 dark:border-gray-800']">
+    <input ref="cameraInput" type="file" accept="image/*" capture="environment" multiple class="sr-only" tabindex="-1" @change="onCameraPick" />
     <button
       type="button"
       :disabled="!canAct"
       :aria-label="done ? 'Bỏ tích' : 'Hoàn thành'"
       class="mt-0.5 shrink-0 rounded-full disabled:opacity-50"
-      @click="emit('toggle', !done)"
+      @click="onToggleClick"
     >
       <UIcon
         :name="done ? 'i-lucide-circle-check' : task.requiresProof ? 'i-lucide-camera' : 'i-lucide-circle'"
@@ -48,15 +67,15 @@ const menu = computed(() => [
     </button>
 
     <div class="min-w-0 flex-1">
-      <p :class="['leading-tight', done && 'text-gray-500 line-through']">{{ task.title }}</p>
-      <p v-if="task.note" class="mt-0.5 text-sm text-gray-500">{{ task.note }}</p>
+      <p :class="['leading-tight', done && 'text-gray-500 dark:text-gray-400 line-through']">{{ task.title }}</p>
+      <p v-if="task.note" class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ task.note }}</p>
       <div class="mt-1 flex flex-wrap items-center gap-1.5">
         <UBadge v-if="task.reminderTime" color="warning" variant="subtle" size="sm" icon="i-lucide-bell">{{ task.reminderTime }}</UBadge>
         <UBadge v-if="task.requiresProof" color="neutral" variant="subtle" size="sm" icon="i-lucide-camera">Cần ảnh</UBadge>
-        <span v-if="carriedOver" class="text-xs text-amber-600">Dồn từ {{ formatShortVi(task.createdDate) }}</span>
+        <span v-if="carriedOver" class="text-xs text-amber-600 dark:text-amber-400">Dồn từ {{ formatShortVi(task.createdDate) }}</span>
       </div>
       <div v-if="done && task.proofs?.length" class="mt-2 flex flex-wrap gap-1.5">
-        <a v-for="proof in task.proofs" :key="proof.publicId" :href="proof.url" target="_blank" rel="noopener" class="block h-14 w-14 overflow-hidden rounded-lg border border-gray-200">
+        <a v-for="proof in task.proofs" :key="proof.publicId" :href="proofViewUrl(proof)" target="_blank" rel="noopener" class="block h-14 w-14 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
           <img :src="thumbnailUrl(proof.url, 112)" alt="Ảnh chứng minh" class="h-full w-full object-cover" loading="lazy" />
         </a>
       </div>

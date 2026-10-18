@@ -9,19 +9,19 @@ defineProps<{
 </script>
 
 <template>
-  <div class="rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-200">
-    <p class="flex items-center gap-1 text-xs text-gray-500">
+  <div class="rounded-xl bg-white dark:bg-gray-900 p-3 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+    <p class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
       <UIcon v-if="icon" :name="icon" class="h-3.5 w-3.5" />
       {{ label }}
     </p>
     <p
       :class="[
         'mt-1 text-2xl font-bold tabular-nums leading-none',
-        tone === 'good' ? 'text-green-700' : tone === 'bad' ? 'text-red-600' : 'text-gray-900',
+        tone === 'good' ? 'text-green-700 dark:text-green-300' : tone === 'bad' ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100',
       ]"
     >
       {{ value }}
     </p>
-    <p v-if="hint" class="mt-1 text-xs text-gray-500">{{ hint }}</p>
+    <p v-if="hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>
   </div>
 </template>

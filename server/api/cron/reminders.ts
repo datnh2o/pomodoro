@@ -15,5 +15,8 @@ export default defineEventHandler(async (event) => {
     vapidPublicKey: config.public.vapidPublicKey,
     vapidPrivateKey: config.vapidPrivateKey,
     vapidSubject: config.vapidSubject,
+    resendApiKey: config.resendApiKey,
+    reportFrom: config.reportFrom,
+    appUrl: config.public.appUrl,
   });
 });

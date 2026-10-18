@@ -76,13 +76,13 @@ const cells = computed(() => {
 });
 
 const STATUS_STYLE: Record<DaySummary["status"], { cell: string; label: string; icon: string }> = {
-  full: { cell: "bg-green-100 text-green-800 ring-green-300", label: "Đủ", icon: "i-lucide-circle-check" },
-  partial: { cell: "bg-amber-100 text-amber-800 ring-amber-300", label: "Thiếu", icon: "i-lucide-minus" },
-  missed: { cell: "bg-red-100 text-red-800 ring-red-300", label: "Bỏ lỡ", icon: "i-lucide-circle-x" },
-  today: { cell: "bg-white text-gray-900 ring-primary", label: "Hôm nay", icon: "i-lucide-clock" },
-  rest: { cell: "bg-sky-100 text-sky-800 ring-sky-300", label: "Nghỉ", icon: "i-lucide-palmtree" },
-  none: { cell: "bg-gray-50 text-gray-400 ring-gray-200", label: "Không có việc", icon: "i-lucide-minus" },
-  future: { cell: "bg-white text-gray-300 ring-gray-100", label: "", icon: "" },
+  full: { cell: "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 ring-green-300 dark:ring-green-700", label: "Đủ", icon: "i-lucide-circle-check" },
+  partial: { cell: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 ring-amber-300 dark:ring-amber-700", label: "Thiếu", icon: "i-lucide-minus" },
+  missed: { cell: "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 ring-red-300 dark:ring-red-700", label: "Bỏ lỡ", icon: "i-lucide-circle-x" },
+  today: { cell: "bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 ring-primary", label: "Hôm nay", icon: "i-lucide-clock" },
+  rest: { cell: "bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 ring-sky-300 dark:ring-sky-700", label: "Nghỉ", icon: "i-lucide-palmtree" },
+  none: { cell: "bg-gray-50 dark:bg-gray-950 text-gray-400 ring-gray-200 dark:ring-gray-800", label: "Không có việc", icon: "i-lucide-minus" },
+  future: { cell: "bg-white dark:bg-gray-900 text-gray-300 ring-gray-100", label: "", icon: "" },
 };
 const LEGEND = (["full", "partial", "missed", "rest", "none"] as const).map((k) => ({ key: k, ...STATUS_STYLE[k] }));
 
@@ -112,14 +112,14 @@ const selectedSide = computed(() =>
 
 <template>
   <div class="flex flex-col gap-5">
-    <section class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
+    <section class="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <div class="mb-3 flex items-center justify-between">
         <UButton color="neutral" variant="ghost" icon="i-lucide-chevron-left" aria-label="Tháng trước" @click="shiftMonth(-1)" />
         <h2 class="font-bold">{{ monthLabel }}</h2>
         <UButton color="neutral" variant="ghost" icon="i-lucide-chevron-right" aria-label="Tháng sau" :disabled="month >= today.slice(0, 7)" @click="shiftMonth(1)" />
       </div>
 
-      <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-gray-500">
+      <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-gray-500 dark:text-gray-400">
         <span v-for="d in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']" :key="d">{{ d }}</span>
       </div>
       <div class="mt-1 grid grid-cols-7 gap-1">
@@ -132,7 +132,7 @@ const selectedSide = computed(() =>
             :class="[
               'flex aspect-square flex-col items-center justify-center rounded-lg text-sm ring-1 transition',
               STATUS_STYLE[cell.status].cell,
-              selected === cell.date && 'ring-2 ring-gray-900',
+              selected === cell.date && 'ring-2 ring-gray-900 dark:ring-white',
             ]"
             :aria-label="`${cell.date}: ${STATUS_STYLE[cell.status].label}`"
             @click="selected = cell.date"
@@ -143,7 +143,7 @@ const selectedSide = computed(() =>
         </template>
       </div>
 
-      <ul class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
+      <ul class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
         <li v-for="item in LEGEND" :key="item.key" class="flex items-center gap-1">
           <span :class="['inline-block h-3 w-3 rounded ring-1', item.cell]" />
           <UIcon :name="item.icon" class="h-3 w-3" />
@@ -151,45 +151,45 @@ const selectedSide = computed(() =>
         </li>
       </ul>
 
-      <p v-if="stats" class="mt-3 text-sm text-gray-600">
-        Tháng này: <b class="text-red-600">{{ formatMoney(stats.penalty) }}</b> tiền phạt ·
+      <p v-if="stats" class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+        Tháng này: <b class="text-red-600 dark:text-red-400">{{ formatMoney(stats.penalty) }}</b> tiền phạt ·
         <b>{{ stats.fullDays }}/{{ stats.countedDays }}</b> ngày làm đủ
       </p>
     </section>
 
     <!-- Chi tiết ngày -->
     <section>
-      <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">{{ formatDateVi(selected) }}</h3>
+      <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ formatDateVi(selected) }}</h3>
       <div v-if="loading" class="py-4 text-center text-gray-400">Đang tải...</div>
       <template v-else>
-        <p v-if="selectedIsRest" class="mb-2 text-sm text-sky-700">Ngày nghỉ: không tính nhiệm vụ chính.</p>
-        <p v-if="selectedSummary?.penalty" class="mb-2 text-sm text-red-600">
-          Mất {{ formatMoney(selectedSummary.penalty) }} vì bỏ lỡ {{ selectedSummary.scheduled - selectedSummary.completed }} việc.
+        <p v-if="selectedIsRest" class="mb-2 text-sm text-sky-700 dark:text-sky-300">Ngày nghỉ: không tính nhiệm vụ chính.</p>
+        <p v-if="selectedSummary?.penalty" class="mb-2 text-sm text-red-600 dark:text-red-400">
+          Mất {{ formatMoney(selectedSummary.penalty) }} vì bỏ lỡ {{ selectedSummary.scheduled - selectedSummary.completed }} việc<template v-if="(selectedDay?.multiplier ?? 1) > 1">, phạt ×{{ selectedDay?.multiplier }} do lỡ liên tiếp</template>.
         </p>
-        <div v-if="!selectedMain.length && !selectedSide.length" class="rounded-xl border border-dashed border-gray-300 p-5 text-center text-sm text-gray-500">
+        <div v-if="!selectedMain.length && !selectedSide.length" class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-5 text-center text-sm text-gray-500 dark:text-gray-400">
           Không có nhiệm vụ nào trong ngày này.
         </div>
         <ul v-else class="flex flex-col gap-2">
-          <li v-for="row in selectedMain" :key="row.task.id" class="rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-200">
+          <li v-for="row in selectedMain" :key="row.task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
             <div class="flex items-center gap-2">
               <UIcon :name="row.done ? 'i-lucide-circle-check' : 'i-lucide-circle-x'" :class="['h-5 w-5 shrink-0', row.done ? 'text-green-600' : 'text-red-500']" />
-              <span :class="['font-medium', !row.done && 'text-gray-500']">{{ row.task.title }}</span>
+              <span :class="['font-medium', !row.done && 'text-gray-500 dark:text-gray-400']">{{ row.task.title }}</span>
               <span class="ml-auto text-xs text-gray-400">{{ row.done ? "Đã làm" : selected < today ? "Bỏ lỡ" : "Chưa làm" }}</span>
             </div>
             <div v-if="row.proofs.length" class="mt-2 flex flex-wrap gap-1.5">
-              <a v-for="proof in row.proofs" :key="proof.publicId" :href="proof.url" target="_blank" rel="noopener" class="block h-16 w-16 overflow-hidden rounded-lg border border-gray-200">
+              <a v-for="proof in row.proofs" :key="proof.publicId" :href="proof.url" target="_blank" rel="noopener" class="block h-16 w-16 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
                 <img :src="thumbnailUrl(proof.url, 128)" alt="Ảnh chứng minh" class="h-full w-full object-cover" loading="lazy" />
               </a>
             </div>
           </li>
-          <li v-for="task in selectedSide" :key="task.id" class="rounded-xl bg-white p-3 text-sm shadow-sm ring-1 ring-gray-200">
+          <li v-for="task in selectedSide" :key="task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 text-sm shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-check" class="h-4 w-4 text-green-600" />
               <span>{{ task.title }}</span>
               <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">Phụ</UBadge>
             </div>
             <div v-if="task.proofs?.length" class="mt-2 flex flex-wrap gap-1.5">
-              <a v-for="proof in task.proofs" :key="proof.publicId" :href="proof.url" target="_blank" rel="noopener" class="block h-16 w-16 overflow-hidden rounded-lg border border-gray-200">
+              <a v-for="proof in task.proofs" :key="proof.publicId" :href="proof.url" target="_blank" rel="noopener" class="block h-16 w-16 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
                 <img :src="thumbnailUrl(proof.url, 128)" alt="Ảnh chứng minh" class="h-full w-full object-cover" loading="lazy" />
               </a>
             </div>

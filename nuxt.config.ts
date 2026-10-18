@@ -57,8 +57,8 @@ export default defineNuxtConfig({
     devOptions: { enabled: false },
   },
 
-  // App dùng nền màu riêng theo chế độ (Pomodoro / Break) nên khóa ở light mode.
-  colorMode: { preference: "light", fallback: "light" },
+  // Giao diện sáng/tối theo hệ thống, người dùng đổi được trong Cài đặt > Giao diện.
+  colorMode: { preference: "system", fallback: "light" },
 
   // Pre-bundle các gói Vite hay phát hiện muộn lúc dev (gây reload trang):
   // Firebase của app và client của Nuxt DevTools.
@@ -80,8 +80,13 @@ export default defineNuxtConfig({
     vapidPrivateKey: "",
     vapidSubject: "",
     cronSecret: "",
+    // Email tổng kết tuần qua Resend (tùy chọn)
+    resendApiKey: "",
+    reportFrom: "",
     public: {
       vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
+      // URL app công khai (để chèn link vào email); trên Netlify có thể để trống, job dùng biến URL
+      appUrl: process.env.NUXT_PUBLIC_APP_URL ?? "",
       firebase: {
         apiKey: process.env.NUXT_PUBLIC_FIREBASE_API_KEY ?? "",
         authDomain: process.env.NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",

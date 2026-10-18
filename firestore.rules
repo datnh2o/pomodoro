@@ -49,7 +49,7 @@ service cloud.firestore {
       allow update: if isOwner(wsId)
         || (can(wsId, 'add')
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['lastClosedDate', 'penaltyTotal']))
+                 .hasOnly(['lastClosedDate', 'penaltyTotal', 'missStreak']))
         || (can(wsId, 'view')
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
             && request.resource.data.members.diff(resource.data.members).affectedKeys()
@@ -72,10 +72,16 @@ service cloud.firestore {
               && resource.data.createdBy == request.auth.uid);
       }
 
-      // Kết quả theo ngày: tích hoàn thành, ảnh chứng minh, chốt phạt
+      // Kết quả theo ngày: tích hoàn thành, ảnh chứng minh, chốt phạt.
+      // Chỉ chủ sở hữu được tích nhiệm vụ chính (đây là kỷ luật của chính họ);
+      // thành viên có quyền add chỉ được ghi phần chốt ngày (không đụng completions).
       match /days/{date} {
         allow read: if can(wsId, 'view');
-        allow create, update: if can(wsId, 'add');
+        allow create: if isOwner(wsId)
+          || (can(wsId, 'add') && !('completions' in request.resource.data));
+        allow update: if isOwner(wsId)
+          || (can(wsId, 'add')
+              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['completions']));
         allow delete: if false;
       }
 

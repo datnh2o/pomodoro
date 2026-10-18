@@ -40,10 +40,20 @@ watch(
   { immediate: true }
 );
 
-// Qua nửa đêm (giờ VN) thì đổi "hôm nay"
+// Trạng thái mạng cho banner ngoại tuyến
+const { online, bind: bindOnline } = useOnline();
+onMounted(() => {
+  const unbind = bindOnline();
+  onBeforeUnmount(unbind);
+});
+
+// Đồng hồ dùng chung: qua nửa đêm (giờ VN) thì đổi "hôm nay", và cập nhật HH:mm cho hạn giờ
+const { tick } = useClock();
 let clock: ReturnType<typeof setInterval> | undefined;
 onMounted(() => {
+  tick();
   clock = setInterval(() => {
+    tick();
     const key = todayKey();
     if (key !== today.value) today.value = key;
   }, 30_000);
@@ -74,13 +84,13 @@ const isPomodoro = computed(() => route.path === "/pomodoro");
   <div
     :class="[
       'min-h-screen transition-colors duration-500',
-      isPomodoro ? [mode.bg, 'text-white'] : 'bg-gray-50 text-gray-900',
+      isPomodoro ? [mode.bg, 'text-white'] : 'bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100',
     ]"
   >
     <header
       :class="[
         'sticky top-0 z-10 border-b backdrop-blur transition-colors duration-500',
-        isPomodoro ? 'border-white/10 bg-black/10' : 'border-gray-200 bg-white/90',
+        isPomodoro ? 'border-white/10 bg-black/10' : 'border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90',
       ]"
     >
       <UContainer class="flex h-14 max-w-xl items-center justify-between">
@@ -90,7 +100,7 @@ const isPomodoro = computed(() => route.path === "/pomodoro");
         </NuxtLink>
 
         <UDropdownMenu v-if="user" :items="userMenu" :content="{ align: 'end' }">
-          <button type="button" :class="['flex items-center gap-2 rounded-full p-1', isPomodoro ? 'hover:bg-black/10' : 'hover:bg-gray-100']" aria-label="Tài khoản">
+          <button type="button" :class="['flex items-center gap-2 rounded-full p-1', isPomodoro ? 'hover:bg-black/10' : 'hover:bg-gray-100 dark:hover:bg-gray-800']" aria-label="Tài khoản">
             <!-- Ảnh Google trả 429 nếu gửi kèm Referer, UAvatar bind $attrs xuống <img> -->
             <UAvatar
               :src="user.photoURL ?? undefined"
@@ -102,6 +112,11 @@ const isPomodoro = computed(() => route.path === "/pomodoro");
         </UDropdownMenu>
       </UContainer>
     </header>
+
+    <div v-if="!online" class="bg-amber-500 px-4 py-1.5 text-center text-sm font-medium text-white">
+      <UIcon name="i-lucide-wifi-off" class="mr-1 inline h-4 w-4 align-text-bottom" />
+      Đang ngoại tuyến. Thay đổi sẽ tự đồng bộ khi có mạng.
+    </div>
 
     <main class="pb-32">
       <UContainer class="max-w-xl py-5">

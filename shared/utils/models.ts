@@ -27,6 +27,22 @@ export interface Workspace {
   shareToken?: string | null;
   /** Giờ nhắc cuối ngày (HH:mm) nếu còn nhiệm vụ chính chưa xong; mặc định 21:00 */
   eveningReminderTime?: string | null;
+  /** Giờ nhắc buổi sáng liệt kê việc hôm nay; null = tắt. Mặc định 07:00 */
+  morningReminderTime?: string | null;
+  /** Phạt tăng dần khi lỡ nhiều ngày liên tiếp (mặc định bật) */
+  penaltyEscalation?: boolean;
+  /** Số ngày lỡ liên tiếp tính đến ngày đã chốt gần nhất */
+  missStreak?: number;
+  /** Giới hạn ngày nghỉ mỗi tháng (mặc định 3) */
+  restLimitPerMonth?: number;
+  /** Chỉ được khai nghỉ hôm nay trước giờ này (mặc định 10:00) */
+  restCutoffTime?: string;
+  /** Email người giám sát nhận tổng kết tuần; null = tắt */
+  supervisorEmail?: string | null;
+  /** Giờ gửi tổng kết tuần vào Chủ nhật (mặc định 20:00) */
+  weeklyReportTime?: string;
+  /** Khóa tuần đã gửi gần nhất, tránh gửi trùng */
+  lastWeeklyReportKey?: string | null;
   /**
    * Chế độ nghỉ: các ngày (YYYY-MM-DD) không tính nhiệm vụ chính, không phạt, không đứt streak.
    * Chỉ được thêm cho hôm nay hoặc tương lai (không khai nghỉ lùi để tránh né phạt).
@@ -38,6 +54,12 @@ export const isRestDay = (restDays: string[] | undefined, date: string): boolean
   !!restDays && restDays.includes(date);
 
 export const DEFAULT_EVENING_REMINDER = "21:00";
+export const DEFAULT_MORNING_REMINDER = "07:00";
+export const DEFAULT_REST_LIMIT = 3;
+export const DEFAULT_REST_CUTOFF = "10:00";
+export const DEFAULT_WEEKLY_REPORT_TIME = "20:00";
+/** Nhắc trước hạn bao nhiêu phút */
+export const DEADLINE_WARNING_MINUTES = 30;
 
 /** Đăng ký Web Push của một thiết bị (workspaces/{ws}/pushSubscriptions/{id}) */
 export interface PushSubscriptionDoc {
@@ -52,6 +74,8 @@ export interface Proof {
   url: string;
   publicId: string;
   takenAt: number;
+  /** MD5 từ Cloudinary, để phát hiện nộp lại ảnh cũ */
+  etag?: string;
 }
 
 export interface Completion {
@@ -69,6 +93,8 @@ export interface DayDoc {
   closedAt?: number;
   /** Ngày này được khai nghỉ lúc chốt */
   rest?: boolean;
+  /** Hệ số phạt tăng dần đã áp dụng */
+  multiplier?: number;
 }
 
 export interface MainTask {
@@ -81,6 +107,8 @@ export interface MainTask {
   weekdays: number[];
   /** Giờ nhắc HH:mm, null nếu không nhắc */
   reminderTime: string | null;
+  /** Hạn hoàn thành HH:mm trong ngày; quá giờ là không tích được nữa. null = tới hết ngày */
+  deadlineTime?: string | null;
   /** Có hiệu lực từ ngày (YYYY-MM-DD) */
   effectiveFrom: string;
   /** Hết hiệu lực từ ngày này (không tính ngày này), null = còn hiệu lực */
@@ -145,6 +173,10 @@ export type Task = MainTask | SideTask;
 
 export const isMainTask = (task: Task): task is MainTask => task.type === "main";
 export const isSideTask = (task: Task): task is SideTask => task.type === "side";
+
+/** Nhiệm vụ chính đã quá hạn trong ngày (so với giờ HH:mm hiện tại) */
+export const isPastDeadline = (task: MainTask, nowHHmm: string): boolean =>
+  !!task.deadlineTime && nowHHmm > task.deadlineTime;
 
 /** Nhiệm vụ chính có được lên lịch vào ngày `date` không */
 export const isScheduledOn = (task: MainTask, date: string): boolean =>

@@ -97,7 +97,7 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
             referrerpolicy="no-referrer"
           />
           <label class="cursor-pointer">
-            <span class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-gray-300 hover:bg-gray-50">
+            <span class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
               <UIcon name="i-lucide-image-up" class="h-4 w-4" />
               Đổi ảnh
             </span>
@@ -116,7 +116,7 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
         <UFormField v-if="emailChanged && needsPassword" name="currentPassword" label="Mật khẩu hiện tại" description="Firebase yêu cầu xác nhận khi đổi email.">
           <PasswordInput v-model="state.currentPassword" autocomplete="current-password" />
         </UFormField>
-        <p v-else-if="emailChanged" class="text-xs text-gray-500">
+        <p v-else-if="emailChanged" class="text-xs text-gray-500 dark:text-gray-400">
           Tài khoản Google: có thể hiện cửa sổ đăng nhập lại để xác nhận.
         </p>
       </UForm>

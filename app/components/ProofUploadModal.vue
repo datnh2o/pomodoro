@@ -2,12 +2,20 @@
 import type { Proof } from "#shared/utils/models";
 
 /** Dùng chung cho nhiệm vụ chính và phụ: chỉ cần tiêu đề để hiển thị */
-const props = defineProps<{ task: { title: string } | null; folder: string }>();
+const props = defineProps<{
+  task: { title: string } | null;
+  folder: string;
+  /** Ảnh đã chọn từ camera trước khi mở modal: bắt đầu tải ngay */
+  initialFiles?: File[];
+  /** etag của các ảnh đã dùng (etag → ngày) để chặn nộp lại ảnh cũ */
+  knownEtags?: Record<string, string>;
+}>();
 const open = defineModel<boolean>("open", { default: false });
 const emit = defineEmits<{ confirm: [proofs: Proof[]]; queue: [files: File[]] }>();
 
-const { isConfigured, upload, thumbnailUrl } = useProofUpload();
+const { isConfigured, upload, thumbnailUrl, proofViewUrl } = useProofUpload();
 const { showError } = useErrorToast();
+const toast = useToast();
 
 interface PendingFile {
   id: number;
@@ -41,12 +49,17 @@ const reset = () => {
 
 watch(open, (value) => {
   if (!value) reset();
+  else if (props.initialFiles?.length) addFiles(props.initialFiles);
 });
 
-const onPick = async (event: Event) => {
+const onPick = (event: Event) => {
   const input = event.target as HTMLInputElement;
   const picked = Array.from(input.files ?? []);
   input.value = "";
+  addFiles(picked);
+};
+
+const addFiles = async (picked: File[]) => {
   for (const file of picked) {
     const entry: PendingFile = {
       id: nextId++,
@@ -59,7 +72,13 @@ const onPick = async (event: Event) => {
     try {
       const proof = await upload(file, props.folder);
       const current = files.value.find((f) => f.id === entry.id);
-      if (current) {
+      const usedOn = proof.etag ? props.knownEtags?.[proof.etag] : undefined;
+      if (current && usedOn) {
+        // Ảnh giống hệt một ảnh đã nộp trước đó → không chấp nhận
+        current.status = "error";
+        current.error = `Ảnh này đã dùng ngày ${usedOn.slice(8, 10)}/${usedOn.slice(5, 7)}`;
+        toast.add({ title: "Ảnh đã dùng rồi", description: current.error, color: "error", icon: "i-lucide-copy-x" });
+      } else if (current) {
         current.proof = proof;
         current.status = "done";
       }
@@ -118,7 +137,7 @@ const confirm = async () => {
 
       <div class="flex flex-col gap-3">
         <label
-          class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 p-6 text-gray-600 hover:bg-gray-50"
+          class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 p-6 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           <UIcon name="i-lucide-camera" class="h-8 w-8" />
           <span class="text-sm font-medium">Chụp ảnh hoặc chọn từ thư viện</span>
@@ -136,9 +155,10 @@ const confirm = async () => {
         />
 
         <ul v-if="files.length" class="grid grid-cols-3 gap-2">
-          <li v-for="file in files" :key="file.id" class="relative aspect-square overflow-hidden rounded-lg border border-gray-200">
+          <li v-for="file in files" :key="file.id" class="relative aspect-square overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
             <img
               :src="file.status === 'done' && file.proof ? thumbnailUrl(file.proof.url, 240) : file.preview"
+              :title="file.error ?? undefined"
               :alt="file.name"
               class="h-full w-full object-cover"
             />

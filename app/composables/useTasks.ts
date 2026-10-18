@@ -28,6 +28,8 @@ export interface MainTaskInput {
   requiresProof: boolean;
   weekdays: number[];
   reminderTime: string | null;
+  /** Hạn hoàn thành trong ngày (HH:mm), null = tới hết ngày */
+  deadlineTime: string | null;
 }
 
 export interface SideTaskInput {
@@ -146,7 +148,11 @@ export const useTasks = () => {
     const sameWeekdays =
       task.weekdays.length === input.weekdays.length &&
       task.weekdays.every((d) => input.weekdays.includes(d));
-    const scheduleChanged = !sameWeekdays || task.requiresProof !== input.requiresProof;
+    // Đổi lịch, yêu cầu ảnh hay hạn giờ đều chỉ có hiệu lực từ ngày mai (không nới hạn cho hôm nay)
+    const scheduleChanged =
+      !sameWeekdays ||
+      task.requiresProof !== input.requiresProof ||
+      (task.deadlineTime ?? null) !== (input.deadlineTime ?? null);
     const notEffectiveYet = task.effectiveFrom > todayKey();
 
     if (!scheduleChanged || notEffectiveYet) {

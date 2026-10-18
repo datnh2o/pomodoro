@@ -40,8 +40,8 @@ const rate = computed(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 text-gray-900">
-    <header class="border-b border-gray-200 bg-white">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+    <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
       <UContainer class="flex h-14 max-w-xl items-center gap-2">
         <IconsTomato :size="22" class="text-primary" />
         <span class="font-bold">{{ data?.name ?? "Nhiệm vụ hằng ngày" }}</span>
@@ -65,33 +65,33 @@ const rate = computed(() => {
       />
 
       <div v-else-if="data" class="flex flex-col gap-5">
-        <section class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
-          <p class="text-sm text-gray-500">{{ formatDateVi(data.today) }}</p>
+        <section class="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ formatDateVi(data.today) }}</p>
           <div class="mt-1 flex items-end justify-between gap-3">
             <p class="text-2xl font-bold">
               {{ doneCount }}/{{ data.todayMain.length }}
-              <span class="text-base font-normal text-gray-500">nhiệm vụ chính</span>
+              <span class="text-base font-normal text-gray-500 dark:text-gray-400">nhiệm vụ chính</span>
             </p>
             <div class="text-right">
-              <p class="text-xs text-gray-500">Tổng nợ</p>
-              <p class="font-bold text-red-600">{{ formatMoney(data.penaltyTotal) }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Tổng nợ</p>
+              <p class="font-bold text-red-600 dark:text-red-400">{{ formatMoney(data.penaltyTotal) }}</p>
             </div>
           </div>
         </section>
 
         <section>
-          <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Hôm nay</h2>
-          <p v-if="data.restToday" class="text-sm text-sky-700">Hôm nay là ngày nghỉ, không tính nhiệm vụ chính.</p>
-          <p v-else-if="!data.todayMain.length" class="text-sm text-gray-500">Hôm nay không có nhiệm vụ chính.</p>
+          <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Hôm nay</h2>
+          <p v-if="data.restToday" class="text-sm text-sky-700 dark:text-sky-300">Hôm nay là ngày nghỉ, không tính nhiệm vụ chính.</p>
+          <p v-else-if="!data.todayMain.length" class="text-sm text-gray-500 dark:text-gray-400">Hôm nay không có nhiệm vụ chính.</p>
           <ul v-else class="flex flex-col gap-2">
-            <li v-for="task in data.todayMain" :key="task.id" class="rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-200">
+            <li v-for="task in data.todayMain" :key="task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
               <div class="flex items-center gap-2">
                 <UIcon :name="task.done ? 'i-lucide-circle-check' : 'i-lucide-circle'" :class="['h-5 w-5 shrink-0', task.done ? 'text-green-600' : 'text-gray-400']" />
-                <span :class="['font-medium', task.done && 'text-gray-500 line-through']">{{ task.title }}</span>
+                <span :class="['font-medium', task.done && 'text-gray-500 dark:text-gray-400 line-through']">{{ task.title }}</span>
                 <UBadge v-if="task.streak" color="error" variant="subtle" size="sm" icon="i-lucide-flame" class="ml-auto">{{ task.streak }}</UBadge>
               </div>
               <div v-if="task.proofs.length" class="mt-2 flex flex-wrap gap-1.5">
-                <a v-for="url in task.proofs" :key="url" :href="url" target="_blank" rel="noopener" class="block h-14 w-14 overflow-hidden rounded-lg border border-gray-200">
+                <a v-for="url in task.proofs" :key="url" :href="url" target="_blank" rel="noopener" class="block h-14 w-14 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
                   <img :src="thumbnailUrl(url, 112)" alt="Ảnh chứng minh" class="h-full w-full object-cover" loading="lazy" />
                 </a>
               </div>
@@ -106,17 +106,17 @@ const rate = computed(() => {
         </section>
 
         <section v-if="data.perTask.length">
-          <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Tháng này theo nhiệm vụ</h2>
-          <div class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+          <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tháng này theo nhiệm vụ</h2>
+          <div class="overflow-hidden rounded-xl bg-white dark:bg-gray-900 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
             <table class="w-full text-sm">
-              <thead class="bg-gray-50 text-left text-xs text-gray-500">
+              <thead class="bg-gray-50 dark:bg-gray-950 text-left text-xs text-gray-500 dark:text-gray-400">
                 <tr>
                   <th class="px-3 py-2 font-medium">Nhiệm vụ</th>
                   <th class="px-2 py-2 text-right font-medium">Làm/Lịch</th>
                   <th class="px-3 py-2 text-right font-medium">Chuỗi</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-100">
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 <tr v-for="row in data.perTask" :key="row.lineageId">
                   <td class="px-3 py-2 font-medium">{{ row.title }}</td>
                   <td class="px-2 py-2 text-right tabular-nums">{{ row.completed }}/{{ row.scheduled }}</td>

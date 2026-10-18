@@ -96,13 +96,13 @@ const rate = (done: number, total: number) => (total ? `${Math.round((done / tot
 <template>
   <div class="flex flex-col gap-5">
     <!-- Bộ lọc kỳ -->
-    <section class="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-gray-200">
-      <div class="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1 text-sm font-medium">
+    <section class="rounded-2xl bg-white dark:bg-gray-900 p-3 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+      <div class="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1 text-sm font-medium">
         <button
           v-for="item in PERIODS"
           :key="item.value"
           type="button"
-          :class="['rounded-md py-1.5 transition', period === item.value ? 'bg-white shadow' : 'text-gray-500']"
+          :class="['rounded-md py-1.5 transition', period === item.value ? 'bg-white dark:bg-gray-900 shadow' : 'text-gray-500 dark:text-gray-400']"
           :aria-pressed="period === item.value"
           @click="period = item.value; anchor = today"
         >
@@ -144,13 +144,13 @@ const rate = (done: number, total: number) => (total ? `${Math.round((done / tot
 
       <!-- Theo từng nhiệm vụ -->
       <section>
-        <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Theo nhiệm vụ chính</h2>
-        <div v-if="!stats.perTask.length" class="rounded-xl border border-dashed border-gray-300 p-5 text-center text-sm text-gray-500">
+        <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Theo nhiệm vụ chính</h2>
+        <div v-if="!stats.perTask.length" class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-5 text-center text-sm text-gray-500 dark:text-gray-400">
           Chưa có ngày nào đã qua trong kỳ này.
         </div>
-        <div v-else class="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+        <div v-else class="overflow-hidden rounded-xl bg-white dark:bg-gray-900 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
           <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-left text-xs text-gray-500">
+            <thead class="bg-gray-50 dark:bg-gray-950 text-left text-xs text-gray-500 dark:text-gray-400">
               <tr>
                 <th class="px-3 py-2 font-medium">Nhiệm vụ</th>
                 <th class="px-2 py-2 text-right font-medium">Làm/Lịch</th>
@@ -158,11 +158,11 @@ const rate = (done: number, total: number) => (total ? `${Math.round((done / tot
                 <th class="px-3 py-2 text-right font-medium">Chuỗi</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
               <tr v-for="row in stats.perTask" :key="row.lineageId">
                 <td class="px-3 py-2">
                   <p class="font-medium">{{ row.title }}</p>
-                  <p v-if="row.missed" class="text-xs text-red-600">Bỏ lỡ {{ row.missed }} lần</p>
+                  <p v-if="row.missed" class="text-xs text-red-600 dark:text-red-400">Bỏ lỡ {{ row.missed }} lần</p>
                 </td>
                 <td class="px-2 py-2 text-right tabular-nums">{{ row.completed }}/{{ row.scheduled }}</td>
                 <td class="px-2 py-2 text-right tabular-nums">{{ rate(row.completed, row.scheduled) }}</td>

@@ -45,7 +45,7 @@ const onSubmit = async (event: FormSubmitEvent<SubAccountInput>) => {
         <UFormField name="password" label="Mật khẩu" required description="Người dùng có thể đổi sau bằng Quên mật khẩu.">
           <PasswordInput v-model="state.password" autocomplete="new-password" />
         </UFormField>
-        <div class="flex flex-col gap-2 rounded-lg bg-gray-50 p-3">
+        <div class="flex flex-col gap-2 rounded-lg bg-gray-50 dark:bg-gray-950 p-3">
           <p class="text-sm font-medium">Quyền</p>
           <USwitch :model-value="true" disabled label="Xem (luôn có)" />
           <USwitch v-model="state.add" label="Thêm: tạo nhiệm vụ phụ, tích hoàn thành, tải ảnh" />

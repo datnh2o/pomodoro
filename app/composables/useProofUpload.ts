@@ -47,13 +47,22 @@ export const useProofUpload = () => {
       const detail = await response.json().catch(() => null);
       throw new Error(detail?.error?.message ?? `Tải ảnh thất bại (HTTP ${response.status})`);
     }
-    const data = (await response.json()) as { secure_url: string; public_id: string };
-    return { url: data.secure_url, publicId: data.public_id, takenAt: Date.now() };
+    const data = (await response.json()) as { secure_url: string; public_id: string; etag?: string };
+    return { url: data.secure_url, publicId: data.public_id, takenAt: Date.now(), etag: data.etag };
   };
 
   /** URL ảnh thu nhỏ vuông qua transformation của Cloudinary */
   const thumbnailUrl = (url: string, size = 160) =>
     url.replace("/upload/", `/upload/c_fill,w_${size},h_${size},q_auto,f_auto/`);
 
-  return { isConfigured, upload, thumbnailUrl };
+  /** URL xem ảnh đầy đủ có đóng dấu giờ chụp ở góc (overlay của Cloudinary, không sửa ảnh gốc) */
+  const proofViewUrl = (proof: Proof) => {
+    const d = new Date(proof.takenAt);
+    const stamp = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    // Cloudinary yêu cầu mã hóa hai lần các ký tự đặc biệt trong text overlay
+    const text = encodeURIComponent(encodeURIComponent(stamp));
+    return proof.url.replace("/upload/", `/upload/q_auto,f_auto/l_text:Arial_36_bold:${text},co_white,bo_6px_solid_rgb:00000080,b_rgb:00000080,g_south_east,x_16,y_16/`);
+  };
+
+  return { isConfigured, upload, thumbnailUrl, proofViewUrl };
 };
