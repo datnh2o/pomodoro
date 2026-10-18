@@ -19,7 +19,6 @@ const push = usePush();
 const { resetPassword } = useAuth();
 const { updateEveningReminder, addRestDay, removeRestDay, restDaysInMonth, updateSettings } = useWorkspace();
 const { confirmAction } = useConfirm();
-const colorMode = useColorMode();
 
 // ---- Kỷ luật & nhắc nhở (owner) ----
 const discipline = reactive({
@@ -69,11 +68,15 @@ const saveDiscipline = async () => {
   }
 };
 
-const themeOptions = [
-  { label: "Theo hệ thống", value: "system", icon: "i-lucide-monitor" },
-  { label: "Sáng", value: "light", icon: "i-lucide-sun" },
-  { label: "Tối", value: "dark", icon: "i-lucide-moon" },
-];
+// ---- Tab ----
+const tab = ref("tasks");
+const tabItems = computed(() => [
+  { label: "Nhiệm vụ", value: "tasks", slot: "tasks" as const, icon: "i-lucide-list-checks" },
+  ...(isOwner.value ? [{ label: "Kỷ luật", value: "discipline", slot: "discipline" as const, icon: "i-lucide-gavel" }] : []),
+  ...(isOwner.value ? [{ label: "Thành viên", value: "members", slot: "members" as const, icon: "i-lucide-users" }] : []),
+  { label: "Thông báo", value: "notifications", slot: "notifications" as const, icon: "i-lucide-bell" },
+  { label: "Tài khoản", value: "account", slot: "account" as const, icon: "i-lucide-user" },
+]);
 
 // ---- Chế độ nghỉ ----
 const restInput = ref("");
@@ -291,6 +294,9 @@ const onChangePassword = async () => {
 
 <template>
   <div class="flex flex-col gap-6">
+    <UTabs v-model="tab" :items="tabItems" color="primary" variant="pill" :ui="{ root: 'gap-4', content: 'min-w-0' }">
+      <template #tasks>
+        <div class="flex flex-col gap-6">
     <!-- Nhiệm vụ chính -->
     <section>
       <div class="mb-2 flex items-center justify-between">
@@ -324,6 +330,11 @@ const onChangePassword = async () => {
       </ul>
     </section>
 
+        </div>
+      </template>
+
+      <template #discipline>
+        <div class="flex flex-col gap-6">
     <!-- Mức phạt -->
     <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Mức phạt</h2>
@@ -376,24 +387,43 @@ const onChangePassword = async () => {
       </form>
     </section>
 
-    <!-- Giao diện -->
-    <section class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
-      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Giao diện</h2>
-      <div class="grid grid-cols-3 gap-2">
-        <UButton
-          v-for="option in themeOptions"
-          :key="option.value"
-          :color="colorMode.preference === option.value ? 'primary' : 'neutral'"
-          :variant="colorMode.preference === option.value ? 'solid' : 'outline'"
-          :icon="option.icon"
-          block
-          @click="colorMode.preference = option.value"
-        >
-          {{ option.label }}
+    <!-- Chế độ nghỉ (owner) -->
+    <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Chế độ nghỉ</h2>
+      <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+        Ngày nghỉ (ốm, đi xa) không tính nhiệm vụ chính, không phạt, không đứt chuỗi. Chỉ khai được cho
+        hôm nay hoặc ngày sau, không khai lùi.
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-palmtree" :disabled="upcomingRestDays.includes(today)" @click="onAddRest(today)">
+          Nghỉ hôm nay
+        </UButton>
+        <UButton color="neutral" variant="outline" size="sm" :disabled="upcomingRestDays.includes(addDays(today, 1))" @click="onAddRest(addDays(today, 1))">
+          Nghỉ ngày mai
         </UButton>
       </div>
+      <form class="mt-3 flex items-center gap-2" @submit.prevent="onAddRest(restInput)">
+        <UInput v-model="restInput" type="date" :min="today" class="w-44" />
+        <UButton type="submit" color="neutral" variant="outline" size="sm" :disabled="!restInput">Thêm ngày</UButton>
+      </form>
+      <ul v-if="upcomingRestDays.length" class="mt-3 flex flex-wrap gap-2">
+        <li v-for="date in upcomingRestDays" :key="date">
+          <UBadge color="info" variant="subtle" size="lg" class="gap-1">
+            {{ date === today ? "Hôm nay" : formatShortVi(date) }}
+            <button type="button" class="ml-1 rounded-full hover:bg-sky-200" :aria-label="`Bỏ nghỉ ${date}`" @click="onRemoveRest(date)">
+              <UIcon name="i-lucide-x" class="h-3.5 w-3.5" />
+            </button>
+          </UBadge>
+        </li>
+      </ul>
+      <p v-else class="mt-3 text-sm text-gray-400">Chưa có ngày nghỉ sắp tới.</p>
     </section>
 
+        </div>
+      </template>
+
+      <template #members>
+        <div class="flex flex-col gap-6">
     <!-- Thành viên (owner) -->
     <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <div class="mb-2 flex items-center justify-between">
@@ -451,38 +481,11 @@ const onChangePassword = async () => {
       </div>
     </section>
 
-    <!-- Chế độ nghỉ (owner) -->
-    <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
-      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Chế độ nghỉ</h2>
-      <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-        Ngày nghỉ (ốm, đi xa) không tính nhiệm vụ chính, không phạt, không đứt chuỗi. Chỉ khai được cho
-        hôm nay hoặc ngày sau, không khai lùi.
-      </p>
-      <div class="flex flex-wrap gap-2">
-        <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-palmtree" :disabled="upcomingRestDays.includes(today)" @click="onAddRest(today)">
-          Nghỉ hôm nay
-        </UButton>
-        <UButton color="neutral" variant="outline" size="sm" :disabled="upcomingRestDays.includes(addDays(today, 1))" @click="onAddRest(addDays(today, 1))">
-          Nghỉ ngày mai
-        </UButton>
-      </div>
-      <form class="mt-3 flex items-center gap-2" @submit.prevent="onAddRest(restInput)">
-        <UInput v-model="restInput" type="date" :min="today" class="w-44" />
-        <UButton type="submit" color="neutral" variant="outline" size="sm" :disabled="!restInput">Thêm ngày</UButton>
-      </form>
-      <ul v-if="upcomingRestDays.length" class="mt-3 flex flex-wrap gap-2">
-        <li v-for="date in upcomingRestDays" :key="date">
-          <UBadge color="info" variant="subtle" size="lg" class="gap-1">
-            {{ date === today ? "Hôm nay" : formatShortVi(date) }}
-            <button type="button" class="ml-1 rounded-full hover:bg-sky-200" :aria-label="`Bỏ nghỉ ${date}`" @click="onRemoveRest(date)">
-              <UIcon name="i-lucide-x" class="h-3.5 w-3.5" />
-            </button>
-          </UBadge>
-        </li>
-      </ul>
-      <p v-else class="mt-3 text-sm text-gray-400">Chưa có ngày nghỉ sắp tới.</p>
-    </section>
+        </div>
+      </template>
 
+      <template #notifications>
+        <div class="flex flex-col gap-6">
     <!-- Thông báo -->
     <section class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Thông báo</h2>
@@ -517,6 +520,11 @@ const onChangePassword = async () => {
       </form>
     </section>
 
+        </div>
+      </template>
+
+      <template #account>
+        <div class="flex flex-col gap-6">
     <!-- Tài khoản -->
     <section class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tài khoản</h2>
@@ -533,6 +541,10 @@ const onChangePassword = async () => {
         <UButton color="neutral" variant="outline" icon="i-lucide-key-round" @click="onChangePassword">Đổi mật khẩu</UButton>
       </div>
     </section>
+
+        </div>
+      </template>
+    </UTabs>
 
     <MainTaskForm v-model:open="formOpen" :task="editing" @save="onSave" />
     <SubAccountForm v-model:open="subAccountOpen" @save="onCreateSubAccount" />

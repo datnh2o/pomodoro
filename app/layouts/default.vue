@@ -73,6 +73,24 @@ const userMenu = computed(() => [
   [{ label: "Đăng xuất", icon: "i-lucide-log-out", onSelect: logout }],
 ]);
 
+// Giao diện sáng/tối/hệ thống, đổi ngay trên header
+const colorMode = useColorMode();
+const themeOptions = [
+  { label: "Theo hệ thống", value: "system", icon: "i-lucide-monitor" },
+  { label: "Sáng", value: "light", icon: "i-lucide-sun" },
+  { label: "Tối", value: "dark", icon: "i-lucide-moon" },
+];
+const themeIcon = computed(() => themeOptions.find((o) => o.value === colorMode.preference)?.icon ?? "i-lucide-sun-moon");
+const themeMenu = computed(() => [
+  themeOptions.map((o) => ({
+    label: o.label,
+    icon: o.icon,
+    type: "checkbox" as const,
+    checked: colorMode.preference === o.value,
+    onUpdateChecked: () => (colorMode.preference = o.value),
+  })),
+]);
+
 const booting = computed(() => !ready.value || (!!user.value && workspaceLoading.value && !workspace.value));
 
 // Trang Pomodoro phủ màu chế độ lên toàn màn hình (nền + header)
@@ -99,6 +117,17 @@ const isPomodoro = computed(() => route.path === "/pomodoro");
           Nhiệm vụ hằng ngày
         </NuxtLink>
 
+        <div class="flex items-center gap-1">
+        <UDropdownMenu :items="themeMenu" :content="{ align: 'end' }">
+          <button
+            type="button"
+            :class="['flex h-9 w-9 items-center justify-center rounded-full', isPomodoro ? 'hover:bg-black/10' : 'hover:bg-gray-100 dark:hover:bg-gray-800']"
+            aria-label="Giao diện sáng/tối"
+          >
+            <UIcon :name="themeIcon" class="h-5 w-5" />
+          </button>
+        </UDropdownMenu>
+
         <UDropdownMenu v-if="user" :items="userMenu" :content="{ align: 'end' }">
           <button type="button" :class="['flex items-center gap-2 rounded-full p-1', isPomodoro ? 'hover:bg-black/10' : 'hover:bg-gray-100 dark:hover:bg-gray-800']" aria-label="Tài khoản">
             <!-- Ảnh Google trả 429 nếu gửi kèm Referer, UAvatar bind $attrs xuống <img> -->
@@ -110,6 +139,7 @@ const isPomodoro = computed(() => route.path === "/pomodoro");
             />
           </button>
         </UDropdownMenu>
+        </div>
       </UContainer>
     </header>
 
