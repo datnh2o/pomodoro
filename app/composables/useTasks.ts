@@ -10,6 +10,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import {
+  ASSIGN_NOTIFY_WINDOW_MS,
   isMainTask,
   isScheduledOn,
   isSideTask,
@@ -45,6 +46,19 @@ export const useTasks = () => {
   const tasks = useState<Task[]>("tasks", () => []);
   const ready = useState<boolean>("tasks:ready", () => false);
   const unsubscribe = useState<Unsubscribe | null>("tasks:unsub", () => null);
+  const toast = useToast();
+
+  /** Báo trong app khi thành viên khác vừa thêm nhiệm vụ phụ (giao việc cho mình) */
+  const notifyAssigned = (task: SideTask) => {
+    const by = workspace.value?.members[task.createdBy];
+    toast.add({
+      title: `${by?.displayName || by?.email || "Thành viên"} vừa giao việc phụ`,
+      description: task.title,
+      color: "info",
+      icon: "i-lucide-list-plus",
+      duration: 10_000,
+    });
+  };
 
   const tasksRef = () => collection($firebase.firestore, "workspaces", requireWs(), "tasks");
   const taskRef = (id: string) => doc($firebase.firestore, "workspaces", requireWs(), "tasks", id);
@@ -61,11 +75,25 @@ export const useTasks = () => {
 
   const bind = (workspaceId: string) => {
     unbind();
+    let initial = true;
     unsubscribe.value = onSnapshot(
       collection($firebase.firestore, "workspaces", workspaceId, "tasks"),
       (snap) => {
         tasks.value = snap.docs.map((d) => normalizeTask({ id: d.id, ...d.data() } as Task));
         ready.value = true;
+
+        // Sau lần tải đầu: nhiệm vụ phụ mới do người khác tạo gần đây → báo cho mình
+        if (!initial && !snap.metadata.hasPendingWrites) {
+          const uid = user.value?.uid;
+          for (const change of snap.docChanges()) {
+            if (change.type !== "added") continue;
+            const task = normalizeTask({ id: change.doc.id, ...change.doc.data() } as Task);
+            if (!isSideTask(task) || task.createdBy === uid) continue;
+            if (Date.now() - task.createdAt > ASSIGN_NOTIFY_WINDOW_MS) continue;
+            notifyAssigned(task);
+          }
+        }
+        initial = false;
       },
       (error) => console.error("tasks listener", error)
     );

@@ -109,7 +109,12 @@ export interface SideTask {
   proofs?: Proof[];
   createdBy: string;
   createdAt: number;
+  /** Server đã gửi nhắc đẩy "được giao việc" cho các thành viên khác (null = chưa) */
+  assignNotifiedAt?: number | null;
 }
+
+/** Nhiệm vụ phụ mới tạo trong vòng N phút được coi là "vừa được giao" */
+export const ASSIGN_NOTIFY_WINDOW_MS = 10 * 60_000;
 
 /** Điền mặc định cho tài liệu nhiệm vụ phụ cũ (trước khi có ảnh/giờ nhắc) */
 export const normalizeTask = (task: Task): Task => {
