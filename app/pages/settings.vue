@@ -294,7 +294,21 @@ const onChangePassword = async () => {
 
 <template>
   <div class="flex flex-col gap-6">
-    <UTabs v-model="tab" :items="tabItems" color="primary" variant="pill" :ui="{ root: 'gap-4', content: 'min-w-0' }">
+    <!-- Ưu tiên màn điện thoại: 5 tab chia đều, icon trên nhãn dưới để không bị cắt chữ -->
+    <UTabs
+      v-model="tab"
+      :items="tabItems"
+      color="primary"
+      variant="pill"
+      :ui="{
+        root: 'gap-4',
+        list: 'p-1',
+        trigger: 'flex-col gap-1 px-1 py-2 min-w-0',
+        leadingIcon: 'size-5',
+        label: 'text-[11px] leading-tight whitespace-nowrap',
+        content: 'min-w-0',
+      }"
+    >
       <template #tasks>
         <div class="flex flex-col gap-6">
     <!-- Nhiệm vụ chính -->
