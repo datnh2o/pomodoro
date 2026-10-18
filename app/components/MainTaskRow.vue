@@ -16,9 +16,20 @@ const emit = defineEmits<{ complete: []; uncomplete: [] }>();
 
 const { thumbnailUrl } = useProofUpload();
 const done = computed(() => !!props.completion);
+
+/** Vuốt sang trái hay sang phải đều là hành động chính: nộp ảnh / hoàn thành / bỏ tích */
+const swipeAction = computed(() =>
+  done.value
+    ? { label: "Bỏ tích", icon: "i-lucide-undo-2", class: "bg-gray-200 text-gray-700" }
+    : props.task.requiresProof
+      ? { label: "Nộp ảnh", icon: "i-lucide-camera", class: "bg-green-600 text-white" }
+      : { label: "Hoàn thành", icon: "i-lucide-circle-check", class: "bg-green-600 text-white" }
+);
+const onSwipe = () => (done.value ? emit("uncomplete") : emit("complete"));
 </script>
 
 <template>
+  <SwipeableRow :left="swipeAction" :right="swipeAction" :disabled="!canAct" @swipe-left="onSwipe" @swipe-right="onSwipe">
   <div
     :class="[
       'flex items-start gap-3 rounded-xl border bg-white p-3 shadow-sm transition',
@@ -73,4 +84,5 @@ const done = computed(() => !!props.completion);
       </div>
     </div>
   </div>
+  </SwipeableRow>
 </template>

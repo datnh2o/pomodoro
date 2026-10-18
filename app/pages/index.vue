@@ -79,6 +79,26 @@ const progress = computed(() =>
   mainToday.value.length ? Math.round((doneMain.value.length / mainToday.value.length) * 100) : 0
 );
 
+// ---- Hai tab Chính / Phụ, nhãn kèm số việc chưa làm ----
+const tab = ref<"main" | "side">("main");
+const pendingSideCount = computed(() => sideToday.value.filter((t) => isSidePendingOn(t, today.value)).length);
+const tabItems = computed(() => [
+  {
+    label: "Chính",
+    value: "main",
+    slot: "main" as const,
+    icon: "i-lucide-list-checks",
+    badge: pendingMain.value.length || undefined,
+  },
+  {
+    label: "Phụ",
+    value: "side",
+    slot: "side" as const,
+    icon: "i-lucide-list-plus",
+    badge: pendingSideCount.value || undefined,
+  },
+]);
+
 // Chốt các ngày đã qua khi dữ liệu sẵn sàng (và mỗi khi sang ngày mới)
 watch(
   [tasksReady, () => workspace.value?.id, today],
@@ -179,6 +199,7 @@ const onToggleSide = async (task: SideTask, done: boolean) => {
   }
 };
 const onDeleteSide = async (task: SideTask) => {
+  if (!confirm(`Xóa "${task.title}"?`)) return;
   try {
     await deleteSideTask(task);
   } catch (error) {
@@ -219,9 +240,18 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
       </p>
     </section>
 
+    <UTabs
+      v-model="tab"
+      :items="tabItems"
+      orientation="vertical"
+      color="primary"
+      variant="pill"
+      :ui="{ root: 'items-start gap-3', list: 'w-24 shrink-0', content: 'min-w-0 flex-1' }"
+    >
+    <template #main>
     <!-- Nhiệm vụ chính -->
     <section>
-      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Nhiệm vụ chính</h2>
+      <p class="mb-2 text-xs text-gray-400">Vuốt ngang một việc để nộp ảnh / hoàn thành.</p>
       <div v-if="!tasksReady" class="py-6 text-center text-gray-400">Đang tải...</div>
       <div v-else-if="isRest" class="rounded-xl border border-dashed border-sky-300 bg-sky-50 p-6 text-center text-sky-800">
         Đang nghỉ. Nhiệm vụ chính sẽ quay lại vào ngày không nghỉ tiếp theo.
@@ -244,10 +274,12 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
         />
       </div>
     </section>
+    </template>
 
+    <template #side>
     <!-- Nhiệm vụ phụ -->
     <section>
-      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Nhiệm vụ phụ</h2>
+      <p class="mb-2 text-xs text-gray-400">Vuốt từ trái sang để sửa, từ phải sang để xóa.</p>
       <div class="flex flex-col gap-2">
         <SideTaskRow
           v-for="task in sideToday"
@@ -266,6 +298,8 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
         <SideTaskInput v-if="can('add')" class="mt-1" @add="onAddSide" @options="openSideOptions" />
       </div>
     </section>
+    </template>
+    </UTabs>
 
     <ProofUploadModal v-model:open="proofOpen" :task="proofTask" :folder="proofFolder" @confirm="onProofConfirm" @queue="onQueueProofs" />
     <SideTaskForm v-model:open="sideFormOpen" :task="sideEditing" :initial-title="sideInitialTitle" @save="onSaveSide" />

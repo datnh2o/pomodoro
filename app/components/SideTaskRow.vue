@@ -15,6 +15,9 @@ const { thumbnailUrl } = useProofUpload();
 const done = computed(() => props.task.doneDate !== null);
 const carriedOver = computed(() => !done.value && props.task.createdDate < props.today);
 
+const editAction = { label: "Sửa", icon: "i-lucide-pencil", class: "bg-sky-600 text-white" };
+const deleteAction = { label: "Xóa", icon: "i-lucide-trash-2", class: "bg-red-600 text-white" };
+
 const menu = computed(() => [
   [
     { label: "Sửa", icon: "i-lucide-pencil", onSelect: () => emit("edit") },
@@ -24,6 +27,12 @@ const menu = computed(() => [
 </script>
 
 <template>
+  <SwipeableRow
+    :left="canEdit ? editAction : undefined"
+    :right="canEdit ? deleteAction : undefined"
+    @swipe-right="emit('edit')"
+    @swipe-left="emit('delete')"
+  >
   <div :class="['flex items-start gap-3 rounded-xl border bg-white p-3 shadow-sm', done ? 'border-green-200 bg-green-50/60' : 'border-gray-200']">
     <button
       type="button"
@@ -57,4 +66,5 @@ const menu = computed(() => [
       <UButton color="neutral" variant="ghost" size="xs" icon="i-lucide-ellipsis-vertical" aria-label="Tùy chọn nhiệm vụ phụ" />
     </UDropdownMenu>
   </div>
+  </SwipeableRow>
 </template>
