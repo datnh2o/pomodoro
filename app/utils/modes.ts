@@ -3,10 +3,8 @@ export type ModeKey = "pomodoro" | "short" | "long";
 export interface Mode {
   key: ModeKey;
   name: string;
-  /** Thời lượng tính bằng giây */
+  /** Thời lượng mặc định tính bằng giây (người dùng đổi được trong cài đặt Pomodoro) */
   duration: number;
-  /** Chế độ tự chuyển sang khi hết giờ */
-  next: ModeKey;
   /** Có hiện nút bỏ qua (skip) khi đang chạy không */
   skippable: boolean;
   /** Class Tailwind — viết đầy đủ để Tailwind quét được (xem tailwind.config.ts) */
@@ -21,7 +19,6 @@ export const MODES: Record<ModeKey, Mode> = {
     key: "pomodoro",
     name: "Pomodoro",
     duration: 25 * 60,
-    next: "short",
     skippable: true,
     bg: "bg-pomodoro",
     bgCard: "bg-pomodoro-light",
@@ -32,7 +29,6 @@ export const MODES: Record<ModeKey, Mode> = {
     key: "short",
     name: "Short Break",
     duration: 5 * 60,
-    next: "pomodoro",
     skippable: true,
     bg: "bg-short",
     bgCard: "bg-short-light",
@@ -43,7 +39,6 @@ export const MODES: Record<ModeKey, Mode> = {
     key: "long",
     name: "Long Break",
     duration: 15 * 60,
-    next: "pomodoro",
     skippable: false,
     bg: "bg-long",
     bgCard: "bg-long-light",

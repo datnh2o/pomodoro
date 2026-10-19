@@ -11,6 +11,43 @@ let musicAudio: HTMLAudioElement | null = null;
 let loadedUrl: string | null = null;
 
 const MUSIC_STORAGE_KEY = "pomodoro:music";
+const SETTINGS_STORAGE_KEY = "pomodoro:settings";
+
+/** Thời lượng (phút) và cấu trúc vòng: sau `longBreakAfter` lần nghỉ ngắn thì nghỉ dài, rồi vòng mới */
+export interface PomodoroSettings {
+  focus: number;
+  short: number;
+  long: number;
+  longBreakAfter: number;
+}
+export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = { focus: 25, short: 5, long: 15, longBreakAfter: 2 };
+
+const clampInt = (value: unknown, min: number, max: number, fallback: number) => {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+};
+
+const readSavedSettings = (): PomodoroSettings => {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Partial<PomodoroSettings>) : {};
+    return {
+      focus: clampInt(parsed.focus, 1, 180, DEFAULT_POMODORO_SETTINGS.focus),
+      short: clampInt(parsed.short, 1, 60, DEFAULT_POMODORO_SETTINGS.short),
+      long: clampInt(parsed.long, 1, 120, DEFAULT_POMODORO_SETTINGS.long),
+      longBreakAfter: clampInt(parsed.longBreakAfter, 1, 10, DEFAULT_POMODORO_SETTINGS.longBreakAfter),
+    };
+  } catch {
+    return { ...DEFAULT_POMODORO_SETTINGS };
+  }
+};
+const saveSettings = (settings: PomodoroSettings) => {
+  try {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    /* ignore */
+  }
+};
 
 /** Nguồn nhạc đã chọn trên máy này; lưu trình duyệt có thể bị chặn nên mọi lỗi đều bỏ qua */
 const readSavedMusic = () => {
@@ -38,8 +75,26 @@ export const usePomodoro = () => {
   const { key: modeKey, mode, setMode } = useMode();
   // Vòng đếm có thể sống lâu hơn component đã gọi start(), nên đọc thẳng state dùng chung thay vì computed của component
   const currentMode = () => MODES[modeKey.value];
-  const remaining = useState<number>("pomodoro:remaining", () => currentMode().duration);
+  const settings = useState<PomodoroSettings>("pomodoro:settings", () =>
+    import.meta.client ? readSavedSettings() : { ...DEFAULT_POMODORO_SETTINGS }
+  );
+  /** Thời lượng (giây) của một chế độ theo cài đặt hiện tại */
+  const durationOf = (key: ModeKey) =>
+    (key === "pomodoro" ? settings.value.focus : key === "short" ? settings.value.short : settings.value.long) * 60;
+  /** Số lần nghỉ ngắn đã xong trong vòng hiện tại */
+  const shortBreaksDone = useState<number>("pomodoro:shortBreaksDone", () => 0);
+  const remaining = useState<number>("pomodoro:remaining", () => durationOf(modeKey.value));
   const running = useState<boolean>("pomodoro:running", () => false);
+
+  /** Tiến độ vòng: phiên tập trung thứ mấy, tổng phiên một vòng, tổng phút một vòng */
+  const cycle = computed(() => {
+    const focusPerCycle = settings.value.longBreakAfter + 1;
+    const focusIndex = Math.min(shortBreaksDone.value + 1, focusPerCycle);
+    const totalMinutes =
+      focusPerCycle * settings.value.focus + settings.value.longBreakAfter * settings.value.short + settings.value.long;
+    const nextBreak: ModeKey = shortBreaksDone.value >= settings.value.longBreakAfter ? "long" : "short";
+    return { focusIndex, focusPerCycle, totalMinutes, nextBreak, shortBreaksDone: shortBreaksDone.value };
+  });
   const musicId = useState<string>("pomodoro:music", () => findMusicSource(readSavedMusic() ?? DEFAULT_MUSIC_SOURCE).id);
   const music = computed(() => findMusicSource(musicId.value));
   const toast = useToast();
@@ -116,7 +171,7 @@ export const usePomodoro = () => {
 
   const reset = () => {
     stop();
-    remaining.value = currentMode().duration;
+    remaining.value = durationOf(modeKey.value);
     // Bản có sẵn thì tua về đầu; đài trực tuyến đã ngắt khi dừng
     if (musicAudio && loadedSource()) musicAudio.currentTime = 0;
   };
@@ -139,14 +194,48 @@ export const usePomodoro = () => {
     reset();
   };
 
-  /** Hết giờ: chuông, sang chế độ kế tiếp và tự chạy. Nhạc không dừng, không tua lại mà phát tiếp */
+  /**
+   * Chế độ kế tiếp theo vòng: tập trung → nghỉ ngắn, trừ khi đã đủ số lần nghỉ ngắn thì nghỉ dài;
+   * hết nghỉ ngắn thì đếm thêm một, hết nghỉ dài thì bắt đầu vòng mới. Luôn quay về tập trung sau khi nghỉ.
+   */
+  const advanceCycle = (): ModeKey => {
+    const current = modeKey.value;
+    if (current === "pomodoro") {
+      return shortBreaksDone.value >= settings.value.longBreakAfter ? "long" : "short";
+    }
+    if (current === "short") shortBreaksDone.value += 1;
+    else shortBreaksDone.value = 0;
+    return "pomodoro";
+  };
+
+  /** Hết giờ: chuông, sang chế độ kế tiếp theo vòng và tự chạy. Nhạc không dừng, không tua lại mà phát tiếp */
   const finish = () => {
     stopCountdown();
     alertSound ??= new Audio("/alert.mp3");
     alertSound.play().catch(() => {});
-    setMode(currentMode().next);
-    remaining.value = currentMode().duration;
+    setMode(advanceCycle());
+    remaining.value = durationOf(modeKey.value);
     start();
+  };
+
+  /** Bắt đầu lại vòng từ phiên tập trung đầu tiên */
+  const resetCycle = () => {
+    shortBreaksDone.value = 0;
+    setMode("pomodoro");
+    reset();
+  };
+
+  /** Đổi thời lượng / cấu trúc vòng (lưu trên máy). Đồng hồ đang dừng thì cập nhật số đang hiện. */
+  const updateSettings = (patch: Partial<PomodoroSettings>) => {
+    settings.value = {
+      focus: clampInt(patch.focus ?? settings.value.focus, 1, 180, settings.value.focus),
+      short: clampInt(patch.short ?? settings.value.short, 1, 60, settings.value.short),
+      long: clampInt(patch.long ?? settings.value.long, 1, 120, settings.value.long),
+      longBreakAfter: clampInt(patch.longBreakAfter ?? settings.value.longBreakAfter, 1, 10, settings.value.longBreakAfter),
+    };
+    saveSettings(settings.value);
+    if (shortBreaksDone.value > settings.value.longBreakAfter) shortBreaksDone.value = settings.value.longBreakAfter;
+    if (!running.value) remaining.value = durationOf(modeKey.value);
   };
 
   function tick() {
@@ -159,5 +248,9 @@ export const usePomodoro = () => {
     finish();
   }
 
-  return { modeKey, mode, remaining, running, formatted, start, stop, reset, toggle, selectMode, musicId, music, setMusic };
+  return {
+    modeKey, mode, remaining, running, formatted, start, stop, reset, toggle, selectMode,
+    musicId, music, setMusic,
+    settings, cycle, durationOf, updateSettings, resetCycle,
+  };
 };
