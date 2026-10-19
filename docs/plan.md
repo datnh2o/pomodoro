@@ -105,7 +105,12 @@ chỉ đọc: `workspaces.shareToken` + API `/api/share/{token}` (firebase-admin
   hoàn thành đúng ngày khi có mạng; tiền phạt ngày đã chốt không hoàn tác.
 - Cần: `NUXT_FIREBASE_SERVICE_ACCOUNT`, `NUXT_PUBLIC_VAPID_PUBLIC_KEY`, `NUXT_VAPID_PRIVATE_KEY`,
   `NUXT_VAPID_SUBJECT`, `NUXT_CRON_SECRET`; publish lại firestore.rules (pushSubscriptions, reminderLog).
-- Hạn mức: 1 lần/phút ≈ 43.200 lượt gọi function/tháng trong 125.000 miễn phí của Netlify.
+- Hạn mức: 1 lần/phút ≈ 43.200 lượt gọi function/tháng trong 125.000 miễn phí của Netlify (gói cũ; gói
+  credit tính theo GB-giờ và mỗi lần deploy).
+- Firestore gói Spark chỉ có 50K lượt đọc/ngày nên job chỉ đọc thứ cần: nhiệm vụ chính còn hiệu lực
+  (`endsOn == null` hoặc `endsOn > since`), việc phụ chưa xong (`doneDate == null`), kiểm tra có thiết bị bằng
+  `limit(1)`, và chỉ đọc `days/{hôm nay}` + `reminderLog` khi phút đó có tin tới giờ. Mô phỏng một ngày
+  (2 bảng, 60 việc phụ đã xong): 108.843 → 15.855 lượt đọc, thông báo gửi ra không đổi.
 
 ### Chế độ nghỉ (xong)
 `workspace.restDays[]`: owner khai nghỉ cho hôm nay hoặc tương lai (không khai lùi). Ngày nghỉ không

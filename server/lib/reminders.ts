@@ -18,7 +18,6 @@ import {
   type DayDoc,
   type MainTask,
   type PushSubscriptionDoc,
-  type SideTask,
   type Task,
   type Workspace,
 } from "../../shared/utils/models";
@@ -135,6 +134,27 @@ const closePastDays = async (
   return closed;
 };
 
+/**
+ * Chỉ đọc nhiệm vụ còn dùng tới, không đọc cả bộ sưu tập (việc phụ đã xong tích lũy mãi, mà job chạy
+ * mỗi phút trên gói Spark chỉ có 50K lượt đọc/ngày):
+ *  - nhiệm vụ chính còn hiệu lực (endsOn == null) hoặc ngừng sau ngày `since` (vẫn có lịch từ `since`)
+ *  - việc phụ chưa xong (doneDate == null)
+ * Mỗi truy vấn lọc một trường nên dùng index tự động, không cần tạo composite index.
+ */
+const loadTasks = async (wsRef: DocumentReference, since: string) => {
+  const tasks = wsRef.collection("tasks");
+  const [active, ended, pendingSide] = await Promise.all([
+    tasks.where("endsOn", "==", null).get(),
+    tasks.where("endsOn", ">", since).get(),
+    tasks.where("doneDate", "==", null).get(),
+  ]);
+  const toTask = (d: { id: string; data: () => unknown }) => normalizeTask({ id: d.id, ...(d.data() as object) } as Task);
+  return {
+    mainTasks: [...active.docs, ...ended.docs].map(toTask).filter(isMainTask),
+    sideTasks: pendingSide.docs.map(toTask).filter(isSideTask),
+  };
+};
+
 // ---------- 3. Email tổng kết tuần ----------
 
 const sendWeeklyEmail = async (
@@ -213,7 +233,9 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
 
     try {
       const needsClosing = (ws.lastClosedDate ?? addDays(ws.createdDate, -1)) < addDays(today, -1);
-      const subscriptions = await wsDoc.ref.collection("pushSubscriptions").get();
+      const subscriptionsRef = wsDoc.ref.collection("pushSubscriptions");
+      // Chỉ cần biết có thiết bị nào không (1 lượt đọc); danh sách đầy đủ đọc khi thật sự có tin để gửi
+      const hasDevices = !(await subscriptionsRef.limit(1).get()).empty;
       const isSunday = weekdayOf(today) === 0;
       const weekKey = weekKeyOf(today, weekdayOf, addDays);
       const wantsWeekly =
@@ -223,11 +245,11 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
         ws.lastWeeklyReportKey !== weekKey;
 
       // Không có gì để làm thì bỏ qua sớm, đỡ tốn lượt đọc
-      if (!needsClosing && subscriptions.empty && !wantsWeekly) continue;
+      if (!needsClosing && !hasDevices && !wantsWeekly) continue;
 
-      const tasksSnap = await wsDoc.ref.collection("tasks").get();
-      const allTasks = tasksSnap.docs.map((d) => normalizeTask({ id: d.id, ...d.data() } as Task));
-      const mainTasks = allTasks.filter(isMainTask) as MainTask[];
+      // Nhiệm vụ chính cần có lịch từ ngày sớm nhất phải xét: ngày chốt, đầu tuần (email) hoặc hôm nay
+      const since = [today, needsClosing ? nextDayToClose(ws) : today, wantsWeekly ? weekKey : today].sort()[0]!;
+      const { mainTasks, sideTasks } = await loadTasks(wsDoc.ref, since);
 
       if (needsClosing) {
         result.daysClosed += await closePastDays(db, wsDoc.ref, mainTasks, today);
@@ -235,7 +257,7 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
 
       if (wantsWeekly) {
         try {
-          if (await sendWeeklyEmail(env, wsDoc.ref, ws, allTasks, today)) {
+          if (await sendWeeklyEmail(env, wsDoc.ref, ws, mainTasks, today)) {
             result.emailsSent++;
             await wsDoc.ref.update({ lastWeeklyReportKey: weekKey });
           }
@@ -244,20 +266,28 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
         }
       }
 
-      if (subscriptions.empty || isRestDay(ws.restDays, today)) continue;
+      if (!hasDevices || isRestDay(ws.restDays, today)) continue;
 
       const scheduled = mainTasks.filter((t) => isScheduledOn(t, today));
-      const sideTasks = allTasks.filter(isSideTask) as SideTask[];
       const pendingSide = sideTasks.filter((t) => isSidePendingOn(t, today) && t.reminderTime);
       const assigned = sideTasks.filter(
         (t) => !t.assignNotifiedAt && t.doneDate === null && now.getTime() - t.createdAt <= ASSIGN_NOTIFY_WINDOW_MS
       );
       const morning = ws.morningReminderTime === undefined ? DEFAULT_MORNING_REMINDER : ws.morningReminderTime;
       const wantsMorning = !!morning && minutes.includes(morning) && scheduled.length > 0;
-      if (!scheduled.length && !pendingSide.length && !assigned.length && !wantsMorning) continue;
+      const evening = ws.eveningReminderTime ?? DEFAULT_EVENING_REMINDER;
+      const due = (time: string | null | undefined) => !!time && minutes.includes(time);
+      // Tin phụ thuộc việc đã tích hôm nay chưa (nhắc giờ, sắp hết hạn, cuối ngày) mới cần đọc days/{hôm nay}
+      const mainDue =
+        scheduled.some((t) => due(t.reminderTime) || (!!t.deadlineTime && due(minusMinutes(t.deadlineTime, DEADLINE_WARNING_MINUTES)))) ||
+        (scheduled.length > 0 && due(evening));
+      const sideDue = pendingSide.some((t) => due(t.reminderTime));
+      // Phần lớn các phút không có gì tới giờ: dừng ở đây, khỏi đọc ngày và nhật ký đã gửi
+      if (!mainDue && !sideDue && !assigned.length && !wantsMorning) continue;
 
-      const daySnap = await wsDoc.ref.collection("days").doc(today).get();
-      const completions = ((daySnap.data() as Partial<DayDoc> | undefined)?.completions ?? {}) as DayDoc["completions"];
+      const completions = mainDue
+        ? (((await wsDoc.ref.collection("days").doc(today).get()).data() as Partial<DayDoc> | undefined)?.completions ?? {})
+        : {};
       const pending = scheduled.filter((t) => !completions[t.id]);
       const todayPenalty = penaltySettingsOn(ws, today);
 
@@ -318,7 +348,6 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
       }
 
       // Cuối ngày
-      const evening = ws.eveningReminderTime ?? DEFAULT_EVENING_REMINDER;
       if (pending.length && minutes.includes(evening) && !sent.evening) {
         const sideNote = pendingSide.length ? ` (+${pendingSide.length} việc phụ)` : "";
         const multiplier = todayPenalty.escalation ? Math.min(2 ** (ws.missStreak ?? 0), MAX_PENALTY_MULTIPLIER) : 1;
@@ -332,6 +361,7 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
 
       if (!messages.length) continue;
 
+      const subscriptions = await subscriptionsRef.get();
       for (const subDoc of subscriptions.docs) {
         const sub = subDoc.data() as PushSubscriptionDoc;
         for (const message of messages) {
