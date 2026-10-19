@@ -1,4 +1,5 @@
 import type { Proof } from "#shared/utils/models";
+import { formatStampVi } from "#shared/utils/dates";
 
 const MAX_EDGE = 1600;
 const JPEG_QUALITY = 0.85;
@@ -57,8 +58,8 @@ export const useProofUpload = () => {
 
   /** URL xem ảnh đầy đủ có đóng dấu giờ chụp ở góc (overlay của Cloudinary, không sửa ảnh gốc) */
   const proofViewUrl = (proof: Proof) => {
-    const d = new Date(proof.takenAt);
-    const stamp = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    // Giờ VN như mọi mốc ngày trong app, kể cả khi máy đặt múi giờ khác
+    const stamp = formatStampVi(proof.takenAt);
     // Cloudinary yêu cầu mã hóa hai lần các ký tự đặc biệt trong text overlay
     const text = encodeURIComponent(encodeURIComponent(stamp));
     return proof.url.replace("/upload/", `/upload/q_auto,f_auto/l_text:Arial_36_bold:${text},co_white,bo_6px_solid_rgb:00000080,b_rgb:00000080,g_south_east,x_16,y_16/`);

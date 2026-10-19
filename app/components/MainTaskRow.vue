@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { isPastDeadline, type Completion, type MainTask } from "#shared/utils/models";
+import { currentTimeHHmm } from "#shared/utils/dates";
 
 const props = defineProps<{
   task: MainTask;
@@ -42,7 +43,7 @@ const onCameraPick = (event: Event) => {
   else emit("complete");
 };
 
-const formatTime = (ts: number) => new Date(ts).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+const formatTime = (ts: number) => currentTimeHHmm(new Date(ts));
 
 /** Vuốt sang trái hay sang phải đều là hành động chính: nộp ảnh / hoàn thành / bỏ tích */
 const swipeAction = computed(() =>

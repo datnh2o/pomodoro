@@ -1,7 +1,7 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { FieldValue, getFirestore, type DocumentReference } from "firebase-admin/firestore";
+import { FieldValue, getFirestore, type DocumentReference, type Firestore } from "firebase-admin/firestore";
 import webpush from "web-push";
-import { addDays, currentTimeHHmm, dateKey, dateRange, weekdayOf } from "../../shared/utils/dates";
+import { addDays, currentTimeHHmm, dateKey, weekdayOf } from "../../shared/utils/dates";
 import {
   ASSIGN_NOTIFY_WINDOW_MS,
   DEADLINE_WARNING_MINUTES,
@@ -14,6 +14,7 @@ import {
   isSidePendingOn,
   isSideTask,
   normalizeTask,
+  penaltySettingsOn,
   type DayDoc,
   type MainTask,
   type PushSubscriptionDoc,
@@ -21,7 +22,7 @@ import {
   type Task,
   type Workspace,
 } from "../../shared/utils/models";
-import { computeDayClose, weekKeyOf } from "../../shared/utils/penalty";
+import { MAX_PENALTY_MULTIPLIER, nextDayToClose, planDayClose, weekKeyOf } from "../../shared/utils/penalty";
 import { computeStats, normalizeDay, type DayMap } from "../../shared/utils/stats";
 
 /**
@@ -89,54 +90,48 @@ const minusMinutes = (hhmm: string, minutes: number) => {
 
 const formatMoney = (amount: number) => `${amount.toLocaleString("vi-VN")} ₫`;
 
+const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+/** Tên nhiệm vụ/bảng do người dùng nhập, phải escape trước khi chèn vào email HTML */
+const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]!);
+
 // ---------- 1. Chốt ngày ----------
 
+/**
+ * Mỗi ngày một transaction, giống client (app/composables/useDay.ts): đọc lại workspace và ngày rồi
+ * chốt đúng ngày kế tiếp, nên chạy cùng lúc với thiết bị đang mở app cũng không cộng phạt hai lần.
+ */
 const closePastDays = async (
+  db: Firestore,
   wsRef: DocumentReference,
-  ws: Workspace,
   mainTasks: MainTask[],
   today: string
 ): Promise<number> => {
   const yesterday = addDays(today, -1);
-  const from = ws.lastClosedDate ? addDays(ws.lastClosedDate, 1) : ws.createdDate;
-  if (from > yesterday) return 0;
-
-  let missStreak = ws.missStreak ?? 0;
-  let addedPenalty = 0;
   let closed = 0;
-  for (const date of dateRange(from, yesterday)) {
-    const ref = wsRef.collection("days").doc(date);
-    const snap = await ref.get();
-    const existing = normalizeDay(date, snap.data() as Partial<DayDoc> | undefined);
-    if (existing.closed) {
-      continue;
-    }
-    const rest = isRestDay(ws.restDays, date);
-    const result = computeDayClose({
-      scheduledIds: rest ? [] : mainTasks.filter((t) => isScheduledOn(t, date)).map((t) => t.id),
-      completedIds: Object.keys(existing.completions),
-      rest,
-      prevMissStreak: missStreak,
-      penaltyAmount: ws.penaltyAmount,
-      escalation: ws.penaltyEscalation ?? true,
+  for (;;) {
+    const outcome = await db.runTransaction(async (tx) => {
+      const wsSnap = await tx.get(wsRef);
+      if (!wsSnap.exists) return null;
+      const ws = { id: wsSnap.id, ...wsSnap.data() } as Workspace;
+      const date = nextDayToClose(ws);
+      if (date > yesterday) return null;
+
+      const ref = wsRef.collection("days").doc(date);
+      const daySnap = await tx.get(ref);
+      const plan = planDayClose(ws, date, daySnap.data() as Partial<DayDoc> | undefined, mainTasks);
+      if (plan.day) tx.set(ref, plan.day, { merge: true });
+      tx.update(wsRef, {
+        lastClosedDate: date,
+        penaltyTotal: FieldValue.increment(plan.penalty),
+        rewardTotal: FieldValue.increment(plan.reward),
+        rewardDays: FieldValue.increment(plan.reward > 0 ? 1 : 0),
+        missStreak: plan.missStreak,
+      });
+      return plan.day ? "closed" : "skipped";
     });
-    missStreak = result.missStreak;
-    addedPenalty += result.penalty;
-    closed++;
-    await ref.set(
-      {
-        date,
-        closed: true,
-        missedTaskIds: result.missedTaskIds,
-        penalty: result.penalty,
-        multiplier: result.multiplier,
-        rest,
-        closedAt: Date.now(),
-      },
-      { merge: true }
-    );
+    if (!outcome) break;
+    if (outcome === "closed") closed++;
   }
-  await wsRef.update({ lastClosedDate: yesterday, penaltyTotal: FieldValue.increment(addedPenalty), missStreak });
   return closed;
 };
 
@@ -159,17 +154,19 @@ const sendWeeklyEmail = async (
   const stats = computeStats({ from: weekStart, to: today, days, tasks, earliest: ws.createdDate, today, restDays: ws.restDays });
 
   const rows = stats.perTask
-    .map((t) => `<tr><td style="padding:4px 8px">${t.title}</td><td style="padding:4px 8px;text-align:right">${t.completed}/${t.scheduled}</td><td style="padding:4px 8px;text-align:right">${t.missed}</td></tr>`)
+    .map((t) => `<tr><td style="padding:4px 8px">${escapeHtml(t.title)}</td><td style="padding:4px 8px;text-align:right">${t.completed}/${t.scheduled}</td><td style="padding:4px 8px;text-align:right">${t.missed}</td></tr>`)
     .join("");
-  const shareLine = ws.shareToken && env.appUrl ? `<p><a href="${env.appUrl}/share/${ws.shareToken}">Xem chi tiết</a></p>` : "";
+  const shareLine = ws.shareToken && env.appUrl ? `<p><a href="${escapeHtml(`${env.appUrl}/share/${ws.shareToken}`)}">Xem chi tiết</a></p>` : "";
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:560px">
       <h2 style="margin:0 0 8px">Tổng kết tuần ${weekStart.slice(8, 10)}/${weekStart.slice(5, 7)} – ${today.slice(8, 10)}/${today.slice(5, 7)}</h2>
-      <p style="margin:0 0 12px;color:#555">${ws.name}</p>
-      <p><b>Tiền phạt tuần này:</b> ${formatMoney(stats.penalty)}<br>
+      <p style="margin:0 0 12px;color:#555">${escapeHtml(ws.name)}</p>
+      <p><b>Tiền thưởng tuần này:</b> ${formatMoney(stats.reward)} (${stats.rewardDays} rương)<br>
+         <b>Tiền phạt tuần này:</b> ${formatMoney(stats.penalty)}<br>
          <b>Ngày làm đủ:</b> ${stats.fullDays}/${stats.countedDays}<br>
          <b>Lần bỏ lỡ:</b> ${stats.missedCount}<br>
-         <b>Tổng nợ hiện tại:</b> ${formatMoney(ws.penaltyTotal)}</p>
+         <b>Tổng nợ hiện tại:</b> ${formatMoney(ws.penaltyTotal)}<br>
+         <b>Tổng thưởng hiện tại:</b> ${formatMoney(ws.rewardTotal ?? 0)}</p>
       ${rows ? `<table style="border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:left;padding:4px 8px">Nhiệm vụ</th><th style="padding:4px 8px">Làm/Lịch</th><th style="padding:4px 8px">Bỏ lỡ</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
       ${shareLine}
       <p style="color:#888;font-size:12px">Email tự động từ app Nhiệm vụ hằng ngày.</p>
@@ -233,7 +230,7 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
       const mainTasks = allTasks.filter(isMainTask) as MainTask[];
 
       if (needsClosing) {
-        result.daysClosed += await closePastDays(wsDoc.ref, ws, mainTasks, today);
+        result.daysClosed += await closePastDays(db, wsDoc.ref, mainTasks, today);
       }
 
       if (wantsWeekly) {
@@ -262,6 +259,7 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
       const daySnap = await wsDoc.ref.collection("days").doc(today).get();
       const completions = ((daySnap.data() as Partial<DayDoc> | undefined)?.completions ?? {}) as DayDoc["completions"];
       const pending = scheduled.filter((t) => !completions[t.id]);
+      const todayPenalty = penaltySettingsOn(ws, today);
 
       const logRef = wsDoc.ref.collection("reminderLog").doc(today);
       const sent = ((await logRef.get()).data() ?? {}) as Record<string, unknown>;
@@ -284,7 +282,7 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
       if (wantsMorning && !sent.morning) {
         messages.push({
           key: "morning",
-          title: `Hôm nay có ${scheduled.length} nhiệm vụ chính`,
+          title: `Hôm nay có ${scheduled.length} nhiệm vụ chính${todayPenalty.reward ? `, xong hết mở rương +${formatMoney(todayPenalty.reward)}` : ""}`,
           body: scheduled
             .map((t) => `${t.title}${t.deadlineTime ? ` (hạn ${t.deadlineTime})` : t.reminderTime ? ` (${t.reminderTime})` : ""}`)
             .join(", "),
@@ -313,7 +311,7 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
           messages.push({
             key,
             title: `Còn ${DEADLINE_WARNING_MINUTES} phút: ${task.title}`,
-            body: `Hạn ${task.deadlineTime}, quá giờ là mất ${formatMoney(ws.penaltyAmount)}.`,
+            body: `Hạn ${task.deadlineTime}, quá giờ là mất ${formatMoney(todayPenalty.amount)}.`,
             tag: `deadline-${task.id}`,
           });
         }
@@ -323,11 +321,11 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
       const evening = ws.eveningReminderTime ?? DEFAULT_EVENING_REMINDER;
       if (pending.length && minutes.includes(evening) && !sent.evening) {
         const sideNote = pendingSide.length ? ` (+${pendingSide.length} việc phụ)` : "";
-        const multiplier = ws.penaltyEscalation === false ? 1 : Math.min(2 ** (ws.missStreak ?? 0), 4);
+        const multiplier = todayPenalty.escalation ? Math.min(2 ** (ws.missStreak ?? 0), MAX_PENALTY_MULTIPLIER) : 1;
         messages.push({
           key: "evening",
           title: `Còn ${pending.length} nhiệm vụ chưa xong hôm nay${sideNote}`,
-          body: `Bỏ lỡ sẽ mất ${formatMoney(pending.length * ws.penaltyAmount * multiplier)}${multiplier > 1 ? ` (phạt ×${multiplier} vì lỡ liên tiếp)` : ""}: ${pending.map((t) => t.title).join(", ")}`,
+          body: `Bỏ lỡ sẽ mất ${formatMoney(pending.length * todayPenalty.amount * multiplier)}${multiplier > 1 ? ` (phạt ×${multiplier} vì lỡ liên tiếp)` : ""}${todayPenalty.reward ? `, xong hết được mở rương +${formatMoney(todayPenalty.reward)}` : ""}: ${pending.map((t) => t.title).join(", ")}`,
           tag: "evening",
         });
       }

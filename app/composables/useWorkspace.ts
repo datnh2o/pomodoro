@@ -3,10 +3,14 @@ import {
   DEFAULT_REST_CUTOFF,
   DEFAULT_REST_LIMIT,
   OWNER_PERMISSIONS,
+  foldPenaltyChanges,
+  penaltySettingsOn,
   type MemberPermissions,
+  type PenaltySettings,
   type Workspace,
 } from "#shared/utils/models";
-import { currentTimeHHmm, todayKey } from "#shared/utils/dates";
+import { nextDayToClose } from "#shared/utils/penalty";
+import { currentTimeHHmm, todayKey, tomorrowKey } from "#shared/utils/dates";
 
 const DEFAULT_PENALTY = 10_000;
 
@@ -99,10 +103,29 @@ export const useWorkspace = () => {
     workspace.value = null;
   };
 
-  const updatePenaltyAmount = async (amount: number) => {
-    if (!workspace.value) return;
-    await updateDoc(doc($firebase.firestore, "workspaces", workspace.value.id), {
-      penaltyAmount: amount,
+  /**
+   * Đổi mức phạt / phạt tăng dần / mức thưởng. Chỉ có hiệu lực từ ngày mai (như đổi lịch nhiệm vụ chính),
+   * để không hạ phạt ngay trước giờ chốt hôm nay. Thay đổi cũ mà các ngày trước nó đã chốt xong
+   * thì gộp vào mức gốc cho gọn.
+   */
+  const updatePenaltySettings = async (patch: Partial<PenaltySettings>) => {
+    const ws = workspace.value;
+    if (!ws) return;
+    const tomorrow = tomorrowKey();
+    const folded = foldPenaltyChanges(ws, nextDayToClose(ws));
+    const kept = folded.penaltyChanges.filter((c) => c.from < tomorrow);
+    const current = penaltySettingsOn({ ...folded, penaltyChanges: kept }, tomorrow);
+    const next = {
+      amount: patch.amount ?? current.amount,
+      escalation: patch.escalation ?? current.escalation,
+      reward: patch.reward ?? current.reward,
+    };
+    const unchanged =
+      next.amount === current.amount && next.escalation === current.escalation && next.reward === current.reward;
+    await updateDoc(doc($firebase.firestore, "workspaces", ws.id), {
+      ...folded,
+      // Đổi về đúng mức đang áp dụng thì bỏ luôn thay đổi đang hẹn
+      penaltyChanges: unchanged ? kept : [...kept, { from: tomorrow, ...next }],
     });
   };
 
@@ -142,7 +165,6 @@ export const useWorkspace = () => {
     patch: Partial<
       Pick<
         Workspace,
-        | "penaltyEscalation"
         | "restLimitPerMonth"
         | "restCutoffTime"
         | "morningReminderTime"
@@ -174,7 +196,7 @@ export const useWorkspace = () => {
 
   return {
     workspace, loading, permissions, isOwner, can, bind, unbind,
-    updatePenaltyAmount, updateEveningReminder, addRestDay, removeRestDay, updateOwnMemberInfo,
+    updatePenaltySettings, updateEveningReminder, addRestDay, removeRestDay, updateOwnMemberInfo,
     restDaysInMonth, updateSettings,
   };
 };

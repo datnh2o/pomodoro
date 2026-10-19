@@ -5,6 +5,8 @@ defineProps<{
   hint?: string;
   icon?: string;
   tone?: "neutral" | "good" | "bad";
+  /** Chữ số nhỏ hơn cho lưới 3 cột trên điện thoại */
+  compact?: boolean;
 }>();
 </script>
 
@@ -16,7 +18,8 @@ defineProps<{
     </p>
     <p
       :class="[
-        'mt-1 text-2xl font-bold tabular-nums leading-none',
+        'mt-1 font-bold tabular-nums leading-none',
+        compact ? 'text-xl' : 'text-2xl',
         tone === 'good' ? 'text-green-700 dark:text-green-300' : tone === 'bad' ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-gray-100',
       ]"
     >

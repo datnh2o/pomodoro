@@ -9,7 +9,8 @@ interface ShareData {
   restToday: boolean;
   penaltyAmount: number;
   penaltyTotal: number;
-  month: { penalty: number; fullDays: number; countedDays: number; missedCount: number };
+  rewardTotal: number;
+  month: { penalty: number; reward: number; rewardDays: number; fullDays: number; countedDays: number; missedCount: number };
   todayMain: Array<{
     id: string;
     title: string;
@@ -75,6 +76,8 @@ const rate = computed(() => {
             <div class="text-right">
               <p class="text-xs text-gray-500 dark:text-gray-400">Tổng nợ</p>
               <p class="font-bold text-red-600 dark:text-red-400">{{ formatMoney(data.penaltyTotal) }}</p>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Tổng thưởng</p>
+              <p class="font-bold text-amber-700 dark:text-amber-300">{{ formatMoney(data.rewardTotal) }}</p>
             </div>
           </div>
         </section>
@@ -99,8 +102,11 @@ const rate = computed(() => {
           </ul>
         </section>
 
-        <section class="grid grid-cols-3 gap-2">
+        <section class="grid grid-cols-2 gap-2">
+          <StatTile label="Thưởng tháng này" :value="formatMoney(data.month.reward)" :hint="`${data.month.rewardDays} rương`" :tone="data.month.reward ? 'good' : 'neutral'" icon="i-lucide-coins" />
           <StatTile label="Phạt tháng này" :value="formatMoney(data.month.penalty)" :tone="data.month.penalty ? 'bad' : 'good'" icon="i-lucide-wallet" />
+        </section>
+        <section class="grid grid-cols-2 gap-2">
           <StatTile label="Ngày làm đủ" :value="rate" :hint="`${data.month.fullDays}/${data.month.countedDays} ngày`" icon="i-lucide-calendar-check" />
           <StatTile label="Lần bỏ lỡ" :value="String(data.month.missedCount)" :tone="data.month.missedCount ? 'bad' : 'good'" icon="i-lucide-circle-x" />
         </section>
@@ -121,7 +127,7 @@ const rate = computed(() => {
                   <td class="px-3 py-2 font-medium">{{ row.title }}</td>
                   <td class="px-2 py-2 text-right tabular-nums">{{ row.completed }}/{{ row.scheduled }}</td>
                   <td class="px-3 py-2 text-right tabular-nums">
-                    <UIcon name="i-lucide-flame" :class="['inline h-4 w-4 align-text-bottom', row.currentStreak ? 'text-orange-500' : 'text-gray-300']" />
+                    <UIcon name="i-lucide-flame" :class="['inline-block h-4 w-4 align-text-bottom', row.currentStreak ? 'text-orange-500' : 'text-gray-300']" />
                     {{ row.currentStreak }}
                   </td>
                 </tr>

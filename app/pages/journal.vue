@@ -70,7 +70,7 @@ const cells = computed(() => {
   const lead = (firstWeekday + 6) % 7; // số ô trống trước ngày 1 (tuần bắt đầu T2)
   for (let i = 0; i < lead; i++) list.push(null);
   for (let d = monthStart.value; d <= monthEnd.value; d = addDays(d, 1)) {
-    list.push(stats.value?.days[d] ?? { date: d, status: "none", scheduled: 0, completed: 0, penalty: 0 });
+    list.push(stats.value?.days[d] ?? { date: d, status: "none", scheduled: 0, completed: 0, penalty: 0, reward: 0 });
   }
   return list;
 });
@@ -130,7 +130,7 @@ const selectedSide = computed(() =>
             type="button"
             :disabled="cell.status === 'future'"
             :class="[
-              'flex aspect-square flex-col items-center justify-center rounded-lg text-sm ring-1 transition',
+              'relative flex aspect-square flex-col items-center justify-center rounded-lg text-sm ring-1 transition',
               STATUS_STYLE[cell.status].cell,
               selected === cell.date && 'ring-2 ring-gray-900 dark:ring-white',
             ]"
@@ -139,6 +139,8 @@ const selectedSide = computed(() =>
           >
             <span class="font-semibold leading-none">{{ Number(cell.date.slice(8, 10)) }}</span>
             <span v-if="cell.scheduled" class="mt-0.5 text-[10px] leading-none tabular-nums">{{ cell.completed }}/{{ cell.scheduled }}</span>
+            <!-- Ngày có thưởng (đã mở rương) -->
+            <UIcon v-if="cell.reward" name="i-lucide-coins" class="absolute right-0.5 top-0.5 h-3 w-3 text-amber-500" />
           </button>
         </template>
       </div>
@@ -149,10 +151,15 @@ const selectedSide = computed(() =>
           <UIcon :name="item.icon" class="h-3 w-3" />
           {{ item.label }}
         </li>
+        <li class="flex items-center gap-1">
+          <UIcon name="i-lucide-coins" class="h-3 w-3 text-amber-500" />
+          Có thưởng
+        </li>
       </ul>
 
       <p v-if="stats" class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-        Tháng này: <b class="text-red-600 dark:text-red-400">{{ formatMoney(stats.penalty) }}</b> tiền phạt ·
+        Tháng này: <b class="text-amber-700 dark:text-amber-300">{{ formatMoney(stats.reward) }}</b> tiền thưởng ({{ stats.rewardDays }} rương) ·
+        <b class="text-red-600 dark:text-red-400">{{ formatMoney(stats.penalty) }}</b> tiền phạt ·
         <b>{{ stats.fullDays }}/{{ stats.countedDays }}</b> ngày làm đủ
       </p>
     </section>
@@ -163,6 +170,10 @@ const selectedSide = computed(() =>
       <div v-if="loading" class="py-4 text-center text-gray-400">Đang tải...</div>
       <template v-else>
         <p v-if="selectedIsRest" class="mb-2 text-sm text-sky-700 dark:text-sky-300">Ngày nghỉ: không tính nhiệm vụ chính.</p>
+        <p v-if="selectedSummary?.reward" class="mb-2 text-sm text-amber-700 dark:text-amber-300">
+          <UIcon name="i-lucide-coins" class="mr-0.5 inline-block h-4 w-4 align-text-bottom" />
+          Xong hết nhiệm vụ chính, mở rương +{{ formatMoney(selectedSummary.reward) }}.
+        </p>
         <p v-if="selectedSummary?.penalty" class="mb-2 text-sm text-red-600 dark:text-red-400">
           Mất {{ formatMoney(selectedSummary.penalty) }} vì bỏ lỡ {{ selectedSummary.scheduled - selectedSummary.completed }} việc<template v-if="(selectedDay?.multiplier ?? 1) > 1">, phạt ×{{ selectedDay?.multiplier }} do lỡ liên tiếp</template>.
         </p>

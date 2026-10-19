@@ -12,6 +12,8 @@ export interface DaySummary {
   scheduled: number;
   completed: number;
   penalty: number;
+  /** Tiền thưởng của ngày đã chốt (mở rương) */
+  reward: number;
 }
 
 export interface LineageStats {
@@ -27,6 +29,10 @@ export interface LineageStats {
 
 export interface PeriodStats {
   penalty: number;
+  /** Tổng thưởng các ngày đã chốt trong kỳ */
+  reward: number;
+  /** Số ngày được thưởng (số rương đã mở) trong kỳ */
+  rewardDays: number;
   /** Số ngày (đến hôm qua) có nhiệm vụ chính và đã làm đủ */
   fullDays: number;
   /** Số ngày (đến hôm qua) có nhiệm vụ chính */
@@ -123,6 +129,8 @@ export const computeStats = (input: {
   const lineages = groupLineages(input.tasks);
   const summaries: Record<string, DaySummary> = {};
   let penalty = 0;
+  let reward = 0;
+  let rewardDays = 0;
   let fullDays = 0;
   let countedDays = 0;
   let missedCount = 0;
@@ -137,7 +145,7 @@ export const computeStats = (input: {
 
     // Ngày nghỉ: không tính nhiệm vụ, không đứt chuỗi
     if (restDays.includes(date)) {
-      summaries[date] = { date, status: date > today ? "future" : "rest", scheduled: 0, completed: 0, penalty: 0 };
+      summaries[date] = { date, status: date > today ? "future" : "rest", scheduled: 0, completed: 0, penalty: 0, reward: 0 };
       continue;
     }
 
@@ -176,9 +184,12 @@ export const computeStats = (input: {
       if (completed === scheduled) fullDays++;
       missedCount += scheduled - completed;
     }
+    const dayReward = day?.closed ? (day.reward ?? 0) : 0;
     if (day?.closed) penalty += day.penalty;
+    reward += dayReward;
+    if (dayReward > 0) rewardDays++;
 
-    summaries[date] = { date, status, scheduled, completed, penalty: day?.closed ? day.penalty : 0 };
+    summaries[date] = { date, status, scheduled, completed, penalty: day?.closed ? day.penalty : 0, reward: dayReward };
   }
 
   const perTask: LineageStats[] = [];
@@ -199,5 +210,5 @@ export const computeStats = (input: {
   }
   perTask.sort((a, b) => b.missed - a.missed || a.title.localeCompare(b.title, "vi"));
 
-  return { penalty, fullDays, countedDays, missedCount, perTask, days: summaries };
+  return { penalty, reward, rewardDays, fullDays, countedDays, missedCount, perTask, days: summaries };
 };

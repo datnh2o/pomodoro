@@ -2,7 +2,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { parseServiceAccount } from "../../lib/reminders";
 import { addDays, todayKey } from "#shared/utils/dates";
-import { isMainTask, isRestDay, isScheduledOn, type DayDoc, type Task, type Workspace } from "#shared/utils/models";
+import { isMainTask, isRestDay, isScheduledOn, penaltySettingsOn, type DayDoc, type Task, type Workspace } from "#shared/utils/models";
 import { computeStats, currentStreaks, normalizeDay, STREAK_LOOKBACK_DAYS, type DayMap } from "#shared/utils/stats";
 
 /**
@@ -80,10 +80,13 @@ export default defineEventHandler(async (event) => {
     name: ws.name,
     today,
     restToday,
-    penaltyAmount: ws.penaltyAmount,
+    penaltyAmount: penaltySettingsOn(ws, today).amount,
     penaltyTotal: ws.penaltyTotal,
+    rewardTotal: ws.rewardTotal ?? 0,
     month: {
       penalty: month.penalty,
+      reward: month.reward,
+      rewardDays: month.rewardDays,
       fullDays: month.fullDays,
       countedDays: month.countedDays,
       missedCount: month.missedCount,

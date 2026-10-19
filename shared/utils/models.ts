@@ -14,10 +14,21 @@ export interface Workspace {
   ownerUid: string;
   name: string;
   timezone: string;
-  /** Tiền phạt mỗi nhiệm vụ chính bỏ lỡ (VND) */
+  /**
+   * Tiền phạt mỗi nhiệm vụ chính bỏ lỡ (VND), trước các thay đổi trong `penaltyChanges`.
+   * Mức áp dụng cho một ngày cụ thể: penaltySettingsOn(ws, date).
+   */
   penaltyAmount: number;
+  /** Đổi mức phạt / phạt tăng dần đã hẹn, mỗi mục có hiệu lực từ `from` (luôn là ngày mai lúc đổi) */
+  penaltyChanges?: PenaltyChange[];
   /** Tổng nợ cộng dồn từ các ngày đã chốt */
   penaltyTotal: number;
+  /** Tiền thưởng khi xong hết nhiệm vụ chính trong ngày (mặc định DEFAULT_REWARD), trước `penaltyChanges` */
+  rewardAmount?: number;
+  /** Tổng thưởng cộng dồn từ các ngày đã chốt */
+  rewardTotal?: number;
+  /** Số ngày đã chốt có thưởng, tức số rương đã mở (tính cấp độ) */
+  rewardDays?: number;
   /** Ngày bắt đầu tính (YYYY-MM-DD) */
   createdDate: string;
   /** Ngày cuối cùng đã chốt, null nếu chưa chốt ngày nào */
@@ -49,6 +60,56 @@ export interface Workspace {
    */
   restDays?: string[];
 }
+
+/** Thưởng mặc định khi xong hết nhiệm vụ chính trong ngày (VND) */
+export const DEFAULT_REWARD = 10_000;
+
+export interface PenaltyChange {
+  /** Có hiệu lực từ ngày này (YYYY-MM-DD) */
+  from: string;
+  amount: number;
+  escalation: boolean;
+  /** Mức thưởng (bản ghi cũ trước khi có thưởng thì không có: giữ mức trước đó) */
+  reward?: number;
+}
+
+/** Mức phạt, phạt tăng dần và mức thưởng của một ngày */
+export interface PenaltySettings {
+  amount: number;
+  escalation: boolean;
+  reward: number;
+}
+
+type PenaltyFields = Pick<Workspace, "penaltyAmount" | "penaltyEscalation" | "rewardAmount" | "penaltyChanges">;
+
+/** Mức phạt, phạt tăng dần và mức thưởng áp dụng cho ngày `date` */
+export const penaltySettingsOn = (ws: PenaltyFields, date: string): PenaltySettings => {
+  let settings: PenaltySettings = {
+    amount: ws.penaltyAmount,
+    escalation: ws.penaltyEscalation ?? true,
+    reward: ws.rewardAmount ?? DEFAULT_REWARD,
+  };
+  const changes = [...(ws.penaltyChanges ?? [])].sort((a, b) => a.from.localeCompare(b.from));
+  for (const change of changes) {
+    if (change.from > date) break;
+    settings = { amount: change.amount, escalation: change.escalation, reward: change.reward ?? settings.reward };
+  }
+  return settings;
+};
+
+/**
+ * Gộp các thay đổi mức phạt không còn cần lưu riêng vào mức gốc. `firstOpenDate` là ngày sớm nhất
+ * chưa chốt: mọi ngày trước đó đã chốt xong nên thay đổi có hiệu lực tới ngày này gộp được.
+ */
+export const foldPenaltyChanges = (ws: PenaltyFields, firstOpenDate: string) => {
+  const base = penaltySettingsOn(ws, firstOpenDate);
+  return {
+    penaltyAmount: base.amount,
+    penaltyEscalation: base.escalation,
+    rewardAmount: base.reward,
+    penaltyChanges: (ws.penaltyChanges ?? []).filter((c) => c.from > firstOpenDate),
+  };
+};
 
 export const isRestDay = (restDays: string[] | undefined, date: string): boolean =>
   !!restDays && restDays.includes(date);
@@ -95,6 +156,10 @@ export interface DayDoc {
   rest?: boolean;
   /** Hệ số phạt tăng dần đã áp dụng */
   multiplier?: number;
+  /** Tiền thưởng lúc chốt: xong hết nhiệm vụ chính của ngày (ngày trước khi có thưởng thì không có) */
+  reward?: number;
+  /** Lúc chủ sở hữu mở rương của ngày (ms), đồng bộ mọi thiết bị. Chỉ là hiệu ứng: thưởng tính lúc chốt */
+  chestOpenedAt?: number;
 }
 
 export interface MainTask {

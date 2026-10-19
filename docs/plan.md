@@ -124,6 +124,19 @@ lên lịch nhiệm vụ chính, không phạt, không đứt streak, không g�
 - Badge số việc trên icon app, nhắc buổi sáng, thẻ "Việc tiếp theo", ăn mừng khi xong hết kèm chuỗi
   ngày không mất tiền, dark mode theo hệ thống + chọn trong Cài đặt, hộp xác nhận riêng, banner ngoại tuyến.
 
+### Trò chơi hóa: rương thưởng & cấp độ (2026-10-19)
+- Xong hết nhiệm vụ chính của ngày được thưởng (mặc định 10k, đổi trong Cài đặt > Kỷ luật, hiệu lực từ
+  ngày mai như mức phạt: `rewardAmount` + `penaltyChanges[].reward`).
+- Thưởng ghi lúc chốt ngày, trong cùng transaction với phạt (`shared/utils/penalty.ts`): `days.reward`,
+  `workspace.rewardTotal`, `workspace.rewardDays` (= số rương đã mở). Ngày nghỉ / không có việc không thưởng.
+  Bỏ tích trước 0h là mất thưởng. Ngày đã chốt trước khi có tính năng này không được thưởng bù.
+- Màn Hôm nay: thanh nhiệm vụ chia ô + rương (khóa / sẵn sàng / đã mở), ví thưởng & nợ (cộng tạm thưởng hôm
+  nay), cấp độ theo số rương (`app/utils/game.ts`). Xong việc cuối thì bật cửa sổ mở rương (âm thanh, xu bay,
+  pháo giấy). "Đã mở" lưu ở `days/{ngày}.chestOpenedAt` nên đồng bộ mọi thiết bị; chỉ chủ sở hữu ghi được.
+- Thống kê thưởng ở Tổng hợp (thưởng, phạt, chênh lệch), Nhật ký (ngày có thưởng), link chia sẻ, email tuần.
+- Rules: thành viên có quyền `add` được ghi thêm `rewardTotal`, `rewardDays` khi chốt ngày, nhưng không ghi
+  được `chestOpenedAt`.
+
 ## 6. Kỹ thuật & giới hạn trên iPhone
 
 - **Ảnh**: bucket Firebase hiện tại (`*.firebasestorage.app`) cần gói Blaze. Phương án miễn phí
@@ -138,4 +151,8 @@ lên lịch nhiệm vụ chính, không phạt, không đứt streak, không g�
 - **Ngoại tuyến**: Firestore có sẵn cache ngoại tuyến (persistentLocalCache) cho nhiệm vụ và tích;
   ảnh chụp khi mất mạng được xếp hàng trong IndexedDB và tải lên khi có mạng.
 - **Chống "xóa cho khỏi bị phạt"**: sửa/xóa nhiệm vụ chính chỉ có hiệu lực từ ngày mai
-  (`effectiveFrom`).
+  (`effectiveFrom`). Đổi mức phạt / phạt tăng dần cũng vậy (`workspace.penaltyChanges`, đọc qua
+  `penaltySettingsOn`).
+- **Chốt ngày không cộng trùng**: client và job server chốt từng ngày trong một transaction (đọc lại
+  `lastClosedDate` rồi mới ghi), nên chạy cùng lúc hoặc thiết bị vừa có mạng lại cũng không cộng phạt hai lần.
+  Client không chốt khi ngoại tuyến.

@@ -7,6 +7,7 @@ const { workspace, loading: workspaceLoading, bind: bindWorkspace, unbind: unbin
 const { bind: bindTasks, unbind: unbindTasks } = useTasks();
 const { today, bind: bindDay, unbind: unbindDay } = useDay();
 const { showError } = useErrorToast();
+const { stop: stopPomodoro } = usePomodoro();
 
 // Chặn route: biết trạng thái đăng nhập rồi mà chưa có user thì về trang đăng nhập
 watch(
@@ -14,6 +15,8 @@ watch(
   async ([isReady, current]) => {
     if (!isReady) return;
     if (!current) {
+      // Pomodoro chạy xuyên các màn, đăng xuất thì dừng đồng hồ và nhạc
+      stopPomodoro();
       unbindTasks();
       unbindDay();
       unbindWorkspace();
@@ -144,7 +147,7 @@ const isPomodoro = computed(() => route.path === "/pomodoro");
     </header>
 
     <div v-if="!online" class="bg-amber-500 px-4 py-1.5 text-center text-sm font-medium text-white">
-      <UIcon name="i-lucide-wifi-off" class="mr-1 inline h-4 w-4 align-text-bottom" />
+      <UIcon name="i-lucide-wifi-off" class="mr-1 inline-block h-4 w-4 align-text-bottom" />
       Đang ngoại tuyến. Thay đổi sẽ tự đồng bộ khi có mạng.
     </div>
 

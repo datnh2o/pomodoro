@@ -1,16 +1,16 @@
 import {
   deleteField,
   doc,
-  getDoc,
   increment,
   onSnapshot,
+  runTransaction,
   setDoc,
   updateDoc,
   type Unsubscribe,
 } from "firebase/firestore";
-import { isRestDay, isScheduledOn, type DayDoc, type MainTask, type Proof } from "#shared/utils/models";
-import { computeDayClose } from "#shared/utils/penalty";
-import { addDays, dateRange, todayKey, yesterdayKey } from "#shared/utils/dates";
+import type { DayDoc, MainTask, Proof, Workspace } from "#shared/utils/models";
+import { nextDayToClose, planDayClose } from "#shared/utils/penalty";
+import { todayKey, yesterdayKey } from "#shared/utils/dates";
 
 const emptyDay = (date: string): DayDoc => ({
   date,
@@ -92,55 +92,61 @@ export const useDay = () => {
     const ws = workspace.value;
     if (!ws || !can("add") || closing.value) return;
     const yesterday = yesterdayKey();
-    const from = ws.lastClosedDate ? addDays(ws.lastClosedDate, 1) : ws.createdDate;
-    if (from > yesterday) return;
+    if (nextDayToClose(ws) > yesterday) return;
+    // Transaction phải đọc dữ liệu mới nhất trên server: ngoại tuyến thì để lần mở sau hoặc job server chốt
+    if (!navigator.onLine) return;
 
     closing.value = true;
+    const firestore = $firebase.firestore;
+    const wsRef = doc(firestore, "workspaces", ws.id);
     try {
-      let addedPenalty = 0;
-      let missStreak = ws.missStreak ?? 0;
-      for (const date of dateRange(from, yesterday)) {
-        const ref = dayRef(ws.id, date);
-        const snap = await getDoc(ref);
-        const existing = snap.exists() ? ({ ...emptyDay(date), ...snap.data() } as DayDoc) : emptyDay(date);
-        if (existing.closed) continue;
+      // Mỗi ngày một transaction đọc lại workspace và ngày rồi chốt đúng ngày kế tiếp. Thiết bị khác
+      // hoặc job server chốt cùng lúc thì transaction chạy lại, thấy đã chốt nên không cộng phạt hai lần.
+      for (;;) {
+        const closedOne = await runTransaction(firestore, async (tx) => {
+          const wsSnap = await tx.get(wsRef);
+          if (!wsSnap.exists()) return false;
+          const fresh = { id: wsSnap.id, ...wsSnap.data() } as Workspace;
+          const date = nextDayToClose(fresh);
+          if (date > yesterday) return false;
 
-        const rest = isRestDay(ws.restDays, date);
-        // Cùng thuật toán với server (shared/utils/penalty.ts): phạt tăng dần theo chuỗi lỡ
-        const result = computeDayClose({
-          scheduledIds: rest ? [] : mainTasks.value.filter((t) => isScheduledOn(t, date)).map((t) => t.id),
-          completedIds: Object.keys(existing.completions),
-          rest,
-          prevMissStreak: missStreak,
-          penaltyAmount: ws.penaltyAmount,
-          escalation: ws.penaltyEscalation ?? true,
+          const ref = dayRef(ws.id, date);
+          const daySnap = await tx.get(ref);
+          // Cùng thuật toán với server (shared/utils/penalty.ts): phạt tăng dần theo chuỗi lỡ
+          const plan = planDayClose(fresh, date, daySnap.data() as Partial<DayDoc> | undefined, mainTasks.value);
+          if (plan.day) tx.set(ref, plan.day, { merge: true });
+          tx.update(wsRef, {
+            lastClosedDate: date,
+            penaltyTotal: increment(plan.penalty),
+            rewardTotal: increment(plan.reward),
+            rewardDays: increment(plan.reward > 0 ? 1 : 0),
+            missStreak: plan.missStreak,
+          });
+          return true;
         });
-        missStreak = result.missStreak;
-        addedPenalty += result.penalty;
-
-        await setDoc(
-          ref,
-          {
-            date,
-            closed: true,
-            missedTaskIds: result.missedTaskIds,
-            penalty: result.penalty,
-            multiplier: result.multiplier,
-            closedAt: Date.now(),
-            rest,
-          },
-          { merge: true }
-        );
+        if (!closedOne) break;
       }
-      await updateDoc(doc($firebase.firestore, "workspaces", ws.id), {
-        lastClosedDate: yesterday,
-        penaltyTotal: increment(addedPenalty),
-        missStreak,
-      });
+    } catch (error) {
+      // Rớt mạng giữa chừng: các ngày đã chốt vẫn đúng, phần còn lại để lần sau
+      if ((error as { code?: string }).code === "unavailable") {
+        console.warn("closePastDays offline", error);
+        return;
+      }
+      throw error;
     } finally {
       closing.value = false;
     }
   };
 
-  return { today, dayDoc, bind, unbind, isCompleted, completionOf, complete, uncomplete, closePastDays };
+  /**
+   * Ghi đã mở rương hôm nay lên ngày (mọi thiết bị thấy ngay qua listener). Chỉ chủ sở hữu ghi được (rules);
+   * mất mạng thì Firestore xếp hàng và đồng bộ sau, giao diện vẫn cập nhật ngay.
+   */
+  const markChestOpened = async () => {
+    const ws = workspace.value;
+    if (!ws || dayDoc.value?.chestOpenedAt) return;
+    await setDoc(dayRef(ws.id, today.value), { date: today.value, chestOpenedAt: Date.now() }, { merge: true });
+  };
+
+  return { today, dayDoc, bind, unbind, isCompleted, completionOf, complete, uncomplete, closePastDays, markChestOpened };
 };

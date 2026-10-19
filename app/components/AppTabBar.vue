@@ -6,6 +6,10 @@ const tabs = [
   { to: "/pomodoro", label: "Pomodoro", icon: "i-lucide-timer" },
   { to: "/settings", label: "Cài đặt", icon: "i-lucide-settings" },
 ];
+
+// Pomodoro đang chạy (kể cả khi ở màn khác): tab hiện thời gian còn lại thay cho nhãn
+const { running, formatted } = usePomodoro();
+const showTimer = (to: string) => to === "/pomodoro" && running.value;
 </script>
 
 <template>
@@ -21,8 +25,9 @@ const tabs = [
           class="flex flex-col items-center gap-0.5 py-2 text-[11px] text-gray-500 dark:text-gray-400"
           active-class="!text-primary font-semibold"
         >
-          <UIcon :name="tab.icon" class="h-6 w-6" />
-          {{ tab.label }}
+          <UIcon :name="tab.icon" :class="['h-6 w-6', showTimer(tab.to) && 'text-primary']" />
+          <span v-if="showTimer(tab.to)" class="font-semibold tabular-nums text-primary">{{ formatted }}</span>
+          <template v-else>{{ tab.label }}</template>
         </NuxtLink>
       </li>
     </ul>

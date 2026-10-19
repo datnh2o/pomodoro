@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { DayMap } from "~/composables/useHistory";
 import { STREAK_LOOKBACK_DAYS } from "~/composables/useHistory";
-import { addDays, formatMoney, formatShortVi, todayKey, weekdayOf } from "#shared/utils/dates";
+import { addDays, formatMoney, formatMoneyShort, formatShortVi, todayKey, weekdayOf } from "#shared/utils/dates";
 
 type Period = "week" | "month" | "year";
 
@@ -91,6 +91,8 @@ const completionRate = computed(() =>
   stats.value && stats.value.countedDays ? Math.round((stats.value.fullDays / stats.value.countedDays) * 100) : null
 );
 const rate = (done: number, total: number) => (total ? `${Math.round((done / total) * 100)}%` : "–");
+const signedMoney = (amount: number) => `${amount >= 0 ? "+" : "−"}${formatMoney(Math.abs(amount))}`;
+const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (workspace.value?.penaltyTotal ?? 0));
 </script>
 
 <template>
@@ -119,14 +121,35 @@ const rate = (done: number, total: number) => (total ? `${Math.round((done / tot
     <div v-if="loading && !stats" class="py-6 text-center text-gray-400">Đang tải...</div>
 
     <template v-else-if="stats">
-      <!-- Ô số liệu đầu bảng -->
+      <!-- Tiền: thưởng (mở rương), phạt, chênh lệch -->
       <section class="grid grid-cols-3 gap-2">
         <StatTile
+          label="Tiền thưởng"
+          compact
+          :value="formatMoneyShort(stats.reward)"
+          :hint="`${stats.rewardDays} rương`"
+          :tone="stats.reward ? 'good' : 'neutral'"
+          icon="i-lucide-coins"
+        />
+        <StatTile
           label="Tiền phạt"
-          :value="formatMoney(stats.penalty)"
+          compact
+          :value="formatMoneyShort(stats.penalty)"
           :tone="stats.penalty ? 'bad' : 'good'"
           icon="i-lucide-wallet"
         />
+        <StatTile
+          label="Chênh lệch"
+          compact
+          :value="`${stats.reward - stats.penalty > 0 ? '+' : ''}${formatMoneyShort(stats.reward - stats.penalty)}`"
+          hint="Thưởng − phạt"
+          :tone="stats.reward - stats.penalty >= 0 ? 'good' : 'bad'"
+          icon="i-lucide-scale"
+        />
+      </section>
+
+      <!-- Ô số liệu ngày -->
+      <section class="grid grid-cols-2 gap-2">
         <StatTile
           label="Ngày làm đủ"
           :value="completionRate === null ? '–' : `${completionRate}%`"
@@ -140,6 +163,19 @@ const rate = (done: number, total: number) => (total ? `${Math.round((done / tot
           :tone="stats.missedCount ? 'bad' : 'good'"
           icon="i-lucide-circle-x"
         />
+      </section>
+
+      <!-- Từ trước tới nay (các ngày đã chốt) -->
+      <section v-if="workspace" class="rounded-xl bg-white dark:bg-gray-900 p-3 text-sm shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Từ trước tới nay</p>
+        <div class="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <span>Thưởng <b class="tabular-nums text-amber-700 dark:text-amber-300">{{ formatMoney(workspace.rewardTotal ?? 0) }}</b> ({{ workspace.rewardDays ?? 0 }} rương)</span>
+          <span>Phạt <b class="tabular-nums text-red-600 dark:text-red-400">{{ formatMoney(workspace.penaltyTotal) }}</b></span>
+          <span>
+            Chênh lệch
+            <b :class="['tabular-nums', allTimeBalance >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-600 dark:text-red-400']">{{ signedMoney(allTimeBalance) }}</b>
+          </span>
+        </div>
       </section>
 
       <!-- Theo từng nhiệm vụ -->

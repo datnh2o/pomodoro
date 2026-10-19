@@ -9,11 +9,12 @@ import {
   DEFAULT_REST_LIMIT,
   DEFAULT_WEEKLY_REPORT_TIME,
   isActiveFrom,
+  penaltySettingsOn,
 } from "#shared/utils/models";
-import { addDays, formatDateVi, formatMoney, formatShortVi, todayKey, WEEKDAY_LABELS } from "#shared/utils/dates";
+import { addDays, formatDateVi, formatMoney, formatShortVi, formatWeekdays, todayKey, tomorrowKey } from "#shared/utils/dates";
 
 const { user } = useAuth();
-const { workspace, can, isOwner, updatePenaltyAmount } = useWorkspace();
+const { workspace, can, isOwner, updatePenaltySettings } = useWorkspace();
 const { mainTasks, createMainTask, updateMainTask, archiveMainTask } = useTasks();
 const push = usePush();
 const { resetPassword } = useAuth();
@@ -33,7 +34,8 @@ watch(
   workspace,
   (ws) => {
     if (!ws) return;
-    discipline.penaltyEscalation = ws.penaltyEscalation ?? true;
+    // Hiện giá trị sẽ áp dụng từ ngày mai (gồm cả thay đổi đang hẹn)
+    discipline.penaltyEscalation = penaltySettingsOn(ws, tomorrowKey()).escalation;
     discipline.restLimitPerMonth = String(ws.restLimitPerMonth ?? DEFAULT_REST_LIMIT);
     discipline.restCutoffTime = ws.restCutoffTime ?? DEFAULT_REST_CUTOFF;
     discipline.morningReminderTime = ws.morningReminderTime === undefined ? DEFAULT_MORNING_REMINDER : (ws.morningReminderTime ?? "");
@@ -54,8 +56,10 @@ const saveDiscipline = async () => {
     return;
   }
   try {
+    if (discipline.penaltyEscalation !== penaltyTomorrow.value?.escalation) {
+      await updatePenaltySettings({ escalation: discipline.penaltyEscalation });
+    }
     await updateSettings({
-      penaltyEscalation: discipline.penaltyEscalation,
       restLimitPerMonth: limit,
       restCutoffTime: discipline.restCutoffTime || DEFAULT_REST_CUTOFF,
       morningReminderTime: discipline.morningReminderTime || null,
@@ -205,8 +209,7 @@ const copyShareUrl = async () => {
 const today = computed(() => todayKey());
 const activeMain = computed(() => mainTasks.value.filter((t) => isActiveFrom(t, today.value)));
 
-const weekdaysLabel = (task: MainTask) =>
-  task.weekdays.length === 7 ? "Hằng ngày" : [...task.weekdays].sort((a, b) => (a || 7) - (b || 7)).map((d) => WEEKDAY_LABELS[d]).join(", ");
+const weekdaysLabel = (task: MainTask) => formatWeekdays(task.weekdays);
 
 // ---- Form nhiệm vụ chính ----
 const formOpen = ref(false);
@@ -262,18 +265,27 @@ const taskMenu = (task: MainTask) => [
   ],
 ];
 
-// ---- Mức phạt ----
+// ---- Mức phạt & thưởng (đổi chỉ có hiệu lực từ ngày mai) ----
+const penaltyToday = computed(() => (workspace.value ? penaltySettingsOn(workspace.value, today.value) : null));
+const penaltyTomorrow = computed(() => (workspace.value ? penaltySettingsOn(workspace.value, addDays(today.value, 1)) : null));
 const penaltyInput = ref("");
-watch(() => workspace.value?.penaltyAmount, (v) => { penaltyInput.value = String(v ?? ""); }, { immediate: true });
+const rewardInput = ref("");
+watch(() => penaltyTomorrow.value?.amount, (v) => { penaltyInput.value = String(v ?? ""); }, { immediate: true });
+watch(() => penaltyTomorrow.value?.reward, (v) => { rewardInput.value = String(v ?? ""); }, { immediate: true });
 const savePenalty = async () => {
   const amount = Number(penaltyInput.value);
-  if (!Number.isInteger(amount) || amount < 0) {
-    showError("Mức phạt không hợp lệ", new Error("Nhập số nguyên không âm"));
+  const reward = Number(rewardInput.value);
+  if (![amount, reward].every((n) => Number.isInteger(n) && n >= 0)) {
+    showError("Số tiền không hợp lệ", new Error("Nhập số nguyên không âm"));
     return;
   }
   try {
-    await updatePenaltyAmount(amount);
-    toast.add({ title: "Đã cập nhật mức phạt", description: formatMoney(amount), color: "success" });
+    await updatePenaltySettings({ amount, reward });
+    toast.add({
+      title: "Đã cập nhật mức phạt & thưởng",
+      description: `Phạt ${formatMoney(amount)}, thưởng ${formatMoney(reward)}, áp dụng từ ${formatShortVi(addDays(today.value, 1))}`,
+      color: "success",
+    });
   } catch (error) {
     showError("Không lưu được", error);
   }
@@ -349,16 +361,33 @@ const onChangePassword = async () => {
 
       <template #discipline>
         <div class="flex flex-col gap-6">
-    <!-- Mức phạt -->
+    <!-- Mức phạt & thưởng -->
     <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
-      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Mức phạt</h2>
-      <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Số tiền mất cho mỗi nhiệm vụ chính bỏ lỡ trong ngày.</p>
-      <form class="flex items-center gap-2" @submit.prevent="savePenalty">
-        <UInput v-model="penaltyInput" type="number" min="0" step="1000" class="w-40" />
-        <span class="text-gray-500 dark:text-gray-400">₫</span>
-        <UButton type="submit" color="neutral" variant="outline">Lưu</UButton>
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Phạt & thưởng</h2>
+      <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">Đổi số tiền có hiệu lực từ ngày mai.</p>
+      <form class="flex flex-col gap-3" @submit.prevent="savePenalty">
+        <div class="grid grid-cols-2 gap-3">
+          <UFormField label="Phạt mỗi việc bỏ lỡ">
+            <UInput v-model="penaltyInput" type="number" min="0" step="1000" class="w-full" trailing-icon="i-lucide-wallet" />
+          </UFormField>
+          <UFormField label="Thưởng ngày xong hết">
+            <UInput v-model="rewardInput" type="number" min="0" step="1000" class="w-full" trailing-icon="i-lucide-coins" />
+          </UFormField>
+        </div>
+        <div>
+          <UButton type="submit" color="neutral" variant="outline">Lưu</UButton>
+        </div>
       </form>
-      <p class="mt-3 text-sm">Tổng nợ hiện tại: <b class="text-red-600 dark:text-red-400">{{ formatMoney(workspace?.penaltyTotal ?? 0) }}</b></p>
+      <p v-if="penaltyToday && penaltyTomorrow && penaltyToday.amount !== penaltyTomorrow.amount" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+        Phạt hôm nay vẫn tính {{ formatMoney(penaltyToday.amount) }}, từ {{ formatShortVi(addDays(today, 1)) }} là {{ formatMoney(penaltyTomorrow.amount) }}.
+      </p>
+      <p v-if="penaltyToday && penaltyTomorrow && penaltyToday.reward !== penaltyTomorrow.reward" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+        Thưởng hôm nay vẫn là {{ formatMoney(penaltyToday.reward) }}, từ {{ formatShortVi(addDays(today, 1)) }} là {{ formatMoney(penaltyTomorrow.reward) }}.
+      </p>
+      <p class="mt-3 text-sm">
+        Tổng nợ: <b class="text-red-600 dark:text-red-400">{{ formatMoney(workspace?.penaltyTotal ?? 0) }}</b> ·
+        Tổng thưởng: <b class="text-amber-700 dark:text-amber-300">{{ formatMoney(workspace?.rewardTotal ?? 0) }}</b>
+      </p>
     </section>
 
     <!-- Kỷ luật & giám sát (owner) -->
@@ -366,6 +395,9 @@ const onChangePassword = async () => {
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Kỷ luật & giám sát</h2>
       <form class="flex flex-col gap-4" @submit.prevent="saveDiscipline">
         <USwitch v-model="discipline.penaltyEscalation" label="Phạt tăng dần khi lỡ liên tiếp (ngày thứ 2 ×2, thứ 3 trở đi ×4)" />
+        <p v-if="penaltyToday && penaltyTomorrow && penaltyToday.escalation !== penaltyTomorrow.escalation" class="-mt-2 text-xs text-amber-600 dark:text-amber-400">
+          Hôm nay vẫn {{ penaltyToday.escalation ? "bật" : "tắt" }} phạt tăng dần, thay đổi áp dụng từ {{ formatShortVi(addDays(today, 1)) }}.
+        </p>
         <p v-if="(workspace?.missStreak ?? 0) > 0" class="-mt-2 text-xs text-red-600 dark:text-red-400">
           Đang lỡ {{ workspace?.missStreak }} ngày liên tiếp, lỡ tiếp sẽ nhân {{ Math.min(2 ** (workspace?.missStreak ?? 0), 4) }}.
         </p>

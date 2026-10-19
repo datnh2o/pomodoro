@@ -44,12 +44,12 @@ service cloud.firestore {
         && request.resource.data.members[request.auth.uid].view == true;
 
       // Owner sửa mọi thứ (thành viên, mức phạt, ...).
-      // Thành viên có quyền `add` chỉ được cập nhật kết quả chốt ngày.
+      // Thành viên có quyền `add` chỉ được cập nhật kết quả chốt ngày (phạt, thưởng, chuỗi lỡ).
       // Mọi thành viên được sửa tên/email hiển thị của chính mình (không đổi quyền).
       allow update: if isOwner(wsId)
         || (can(wsId, 'add')
             && request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['lastClosedDate', 'penaltyTotal', 'missStreak']))
+                 .hasOnly(['lastClosedDate', 'penaltyTotal', 'rewardTotal', 'rewardDays', 'missStreak']))
         || (can(wsId, 'view')
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
             && request.resource.data.members.diff(resource.data.members).affectedKeys()
@@ -72,16 +72,18 @@ service cloud.firestore {
               && resource.data.createdBy == request.auth.uid);
       }
 
-      // Kết quả theo ngày: tích hoàn thành, ảnh chứng minh, chốt phạt.
-      // Chỉ chủ sở hữu được tích nhiệm vụ chính (đây là kỷ luật của chính họ);
-      // thành viên có quyền add chỉ được ghi phần chốt ngày (không đụng completions).
+      // Kết quả theo ngày: tích hoàn thành, ảnh chứng minh, chốt phạt/thưởng, đã mở rương.
+      // Chỉ chủ sở hữu được tích nhiệm vụ chính và mở rương (đây là kỷ luật của chính họ);
+      // thành viên có quyền add chỉ được ghi phần chốt ngày (không đụng completions, chestOpenedAt).
       match /days/{date} {
         allow read: if can(wsId, 'view');
         allow create: if isOwner(wsId)
-          || (can(wsId, 'add') && !('completions' in request.resource.data));
+          || (can(wsId, 'add')
+              && !('completions' in request.resource.data)
+              && !('chestOpenedAt' in request.resource.data));
         allow update: if isOwner(wsId)
           || (can(wsId, 'add')
-              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['completions']));
+              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['completions', 'chestOpenedAt']));
         allow delete: if false;
       }
 

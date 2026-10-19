@@ -2,7 +2,7 @@
 import type { FormError, FormSubmitEvent } from "@nuxt/ui";
 import type { MainTask } from "#shared/utils/models";
 import type { MainTaskInput } from "~/composables/useTasks";
-import { ALL_WEEKDAYS, WEEKDAY_LABELS } from "#shared/utils/dates";
+import { ALL_WEEKDAYS, WEEKDAY_GROUPS, WEEKDAY_LABELS, formatWeekdays } from "#shared/utils/dates";
 
 const props = defineProps<{ task: MainTask | null }>();
 const open = defineModel<boolean>("open", { default: false });
@@ -41,6 +41,14 @@ const toggleWeekday = (day: number) => {
   state.weekdays = state.weekdays.includes(day)
     ? state.weekdays.filter((d) => d !== day)
     : [...state.weekdays, day];
+};
+
+/** Bấm tên nhóm (Ngày thường / Cuối tuần): chọn cả nhóm, đã chọn đủ thì bỏ cả nhóm */
+const isGroupSelected = (days: readonly number[]) => days.every((d) => state.weekdays.includes(d));
+const toggleGroup = (days: readonly number[]) => {
+  state.weekdays = isGroupSelected(days)
+    ? state.weekdays.filter((d) => !days.includes(d))
+    : [...new Set([...state.weekdays, ...days])];
 };
 
 const scheduleChanged = computed(() => {
@@ -87,21 +95,35 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
           <UTextarea v-model="state.note" :rows="2" placeholder="Tùy chọn" maxlength="300" class="w-full" />
         </UFormField>
 
-        <UFormField name="weekdays" label="Lặp lại vào">
-          <div class="flex flex-wrap gap-1.5">
-            <UButton
-              v-for="day in ALL_WEEKDAYS"
-              :key="day"
-              type="button"
-              size="sm"
-              :color="state.weekdays.includes(day) ? 'primary' : 'neutral'"
-              :variant="state.weekdays.includes(day) ? 'solid' : 'outline'"
-              class="w-11 justify-center"
-              :aria-pressed="state.weekdays.includes(day)"
-              @click="toggleWeekday(day)"
-            >
-              {{ WEEKDAY_LABELS[day] }}
-            </UButton>
+        <UFormField name="weekdays" label="Lặp lại vào" :hint="formatWeekdays(state.weekdays)">
+          <div class="flex flex-wrap gap-x-4 gap-y-2">
+            <div v-for="group in WEEKDAY_GROUPS" :key="group.label" class="flex flex-col items-start gap-1">
+              <UButton
+                type="button"
+                size="xs"
+                :color="isGroupSelected(group.days) ? 'primary' : 'neutral'"
+                :variant="isGroupSelected(group.days) ? 'soft' : 'ghost'"
+                :aria-pressed="isGroupSelected(group.days)"
+                @click="toggleGroup(group.days)"
+              >
+                {{ group.label }}
+              </UButton>
+              <div class="flex gap-1.5">
+                <UButton
+                  v-for="day in group.days"
+                  :key="day"
+                  type="button"
+                  size="sm"
+                  :color="state.weekdays.includes(day) ? 'primary' : 'neutral'"
+                  :variant="state.weekdays.includes(day) ? 'solid' : 'outline'"
+                  class="w-11 justify-center"
+                  :aria-pressed="state.weekdays.includes(day)"
+                  @click="toggleWeekday(day)"
+                >
+                  {{ WEEKDAY_LABELS[day] }}
+                </UButton>
+              </div>
+            </div>
           </div>
         </UFormField>
 
