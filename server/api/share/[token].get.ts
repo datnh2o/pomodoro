@@ -1,6 +1,4 @@
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-import { parseServiceAccount } from "../../lib/reminders";
+import { useAdminDb } from "../../utils/adminDb";
 import { addDays, todayKey } from "#shared/utils/dates";
 import { isMainTask, isRestDay, isScheduledOn, penaltySettingsOn, type DayDoc, type Task, type Workspace } from "#shared/utils/models";
 import { computeStats, currentStreaks, normalizeDay, STREAK_LOOKBACK_DAYS, type DayMap } from "#shared/utils/stats";
@@ -9,28 +7,13 @@ import { computeStats, currentStreaks, normalizeDay, STREAK_LOOKBACK_DAYS, type 
  * Dữ liệu chỉ đọc cho link chia sẻ /share/{token}.
  * Người xem không đăng nhập nên server đọc Firestore bằng service account (firebase-admin).
  */
-const getDb = () => {
-  // Nuxt tự parse env dạng JSON thành object; chấp nhận cả chuỗi lẫn object
-  const raw = useRuntimeConfig().firebaseServiceAccount as string | Record<string, unknown>;
-  if (!raw || (typeof raw === "object" && !Object.keys(raw).length)) {
-    throw createError({
-      statusCode: 503,
-      statusMessage: "Link chia sẻ chưa được cấu hình trên server (thiếu NUXT_FIREBASE_SERVICE_ACCOUNT).",
-    });
-  }
-  if (!getApps().length) {
-    initializeApp({ credential: cert(parseServiceAccount(raw)) });
-  }
-  return getFirestore();
-};
-
 export default defineEventHandler(async (event) => {
   const token = getRouterParam(event, "token") ?? "";
   if (!/^[a-f0-9]{32}$/.test(token)) {
     throw createError({ statusCode: 404, statusMessage: "Link không hợp lệ" });
   }
 
-  const db = getDb();
+  const db = useAdminDb();
   const wsSnap = await db.collection("workspaces").where("shareToken", "==", token).limit(1).get();
   const wsDoc = wsSnap.docs[0];
   if (!wsDoc) {

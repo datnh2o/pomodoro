@@ -142,6 +142,14 @@ lên lịch nhiệm vụ chính, không phạt, không đứt streak, không g�
 - Rules: thành viên có quyền `add` được ghi thêm `rewardTotal`, `rewardDays` khi chốt ngày, nhưng không ghi
   được `chestOpenedAt`.
 
+### Widget màn hình chính qua Scriptable (2026-10-19)
+- iOS chưa cho PWA có widget, nên dùng app Scriptable (miễn phí). Cài đặt > Thông báo > "Sao chép script"
+  tạo script từ `app/assets/widget/scriptable-widget.js`, điền sẵn địa chỉ app và mã link chia sẻ chỉ đọc.
+- Script gọi `/api/widget/{token}` (`server/lib/widget.ts`): ~10 lượt đọc mỗi lần (workspace, nhiệm vụ còn hiệu
+  lực qua `server/lib/tasks.ts`, ngày hôm nay) vì widget tự làm mới nhiều lần mỗi ngày; cache 60 giây.
+- Hỗ trợ widget nhỏ / vừa / lớn và màn hình khoá; mất mạng thì hiện bản lưu lần trước. Tắt link chia sẻ là
+  widget ngừng hoạt động.
+
 ## 6. Kỹ thuật & giới hạn trên iPhone
 
 - **Ảnh**: bucket Firebase hiện tại (`*.firebasestorage.app`) cần gói Blaze. Phương án miễn phí

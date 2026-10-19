@@ -1,4 +1,4 @@
-import type { MainTask, SideTask } from "#shared/utils/models";
+import { slotTimeOf, type MainTask, type SideTask } from "#shared/utils/models";
 
 export type PeriodKey = "morning" | "afternoon" | "evening" | "anytime";
 
@@ -27,9 +27,7 @@ export const periodOf = (hhmm: string | null): PeriodKey => {
   return "morning";
 };
 
-/** Giờ xếp buổi của một việc: giờ nhắc (lúc định làm), không có thì hạn giờ */
-export const slotTimeOf = (task: MainTask | SideTask): string | null =>
-  task.reminderTime || (task.type === "main" ? task.deadlineTime || null : null);
+export { slotTimeOf };
 
 export interface PeriodGroup<T> extends Period {
   items: T[];

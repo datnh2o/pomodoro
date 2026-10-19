@@ -231,6 +231,10 @@ export interface ReminderTarget {
 }
 
 /** Nhiệm vụ phụ còn hiện trong ngày `date` (chưa xong, tạo từ ngày đó trở về trước) */
+/** Giờ "đến lượt" của một việc (xếp thứ tự, chia buổi): giờ nhắc (lúc định làm), không có thì hạn giờ */
+export const slotTimeOf = (task: MainTask | SideTask): string | null =>
+  task.reminderTime || (task.type === "main" ? task.deadlineTime || null : null);
+
 export const isSidePendingOn = (task: SideTask, date: string): boolean =>
   task.doneDate === null && task.createdDate <= date;
 

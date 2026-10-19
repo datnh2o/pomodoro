@@ -12,6 +12,7 @@ import {
   penaltySettingsOn,
 } from "#shared/utils/models";
 import { addDays, formatDateVi, formatMoney, formatShortVi, formatWeekdays, todayKey, tomorrowKey } from "#shared/utils/dates";
+import { buildScriptableWidget, SCRIPTABLE_APP_URL } from "~/utils/scriptableWidget";
 
 const { user } = useAuth();
 const { workspace, can, isOwner, updatePenaltySettings } = useWorkspace();
@@ -203,6 +204,23 @@ const copyShareUrl = async () => {
     toast.add({ title: "Đã sao chép link", color: "success" });
   } catch {
     toast.add({ title: "Không sao chép được", description: shareUrl.value, color: "warning" });
+  }
+};
+
+// ---- Widget màn hình chính (Scriptable), đọc qua mã link chia sẻ ----
+const widgetScript = computed(() => {
+  const token = workspace.value?.shareToken;
+  if (!token) return null;
+  const origin = window.location.origin;
+  return buildScriptableWidget(`${origin}/api/widget/${token}`, `${origin}/`);
+});
+const copyWidgetScript = async () => {
+  if (!widgetScript.value) return;
+  try {
+    await navigator.clipboard.writeText(widgetScript.value);
+    toast.add({ title: "Đã sao chép script widget", description: "Mở Scriptable, tạo script mới rồi dán vào.", color: "success" });
+  } catch {
+    toast.add({ title: "Không sao chép được", description: "Thử lại trên Safari của iPhone.", color: "warning" });
   }
 };
 
@@ -564,6 +582,41 @@ const onChangePassword = async () => {
         <UInput id="evening-time" v-model="eveningInput" type="time" class="w-32" />
         <UButton type="submit" color="neutral" variant="outline" size="sm">Lưu</UButton>
       </form>
+    </section>
+
+    <!-- Widget màn hình chính (iPhone, qua app Scriptable) -->
+    <section class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Widget màn hình chính</h2>
+      <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+        iPhone chưa cho web app có widget, nên dùng app miễn phí Scriptable: hiện tiến độ hôm nay, việc tiếp theo,
+        rương và tiền ngay trên màn hình chính hoặc màn hình khoá. Chạm vào widget là mở app.
+      </p>
+      <template v-if="widgetScript">
+        <ol class="flex list-decimal flex-col gap-1.5 pl-5 text-sm text-gray-700 dark:text-gray-300">
+          <li>Cài <a :href="SCRIPTABLE_APP_URL" target="_blank" rel="noopener" class="font-medium text-primary underline">Scriptable</a> từ App Store.</li>
+          <li>Bấm <b>Sao chép script</b> bên dưới.</li>
+          <li>Mở Scriptable, bấm <b>+</b>, dán script, đặt tên (ví dụ "Nhiệm vụ") rồi bấm <b>Done</b>.</li>
+          <li>Giữ màn hình chính → <b>Sửa</b> → <b>Thêm tiện ích</b> → <b>Scriptable</b>, chọn cỡ rồi thêm.</li>
+          <li>Giữ widget vừa thêm → <b>Sửa tiện ích</b> → <b>Script</b>: chọn "Nhiệm vụ".</li>
+        </ol>
+        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Màn hình khoá: giữ màn hình khoá → Tùy chỉnh → thêm tiện ích Scriptable và chọn cùng script.
+        </p>
+        <UButton class="mt-3" icon="i-lucide-copy" @click="copyWidgetScript">Sao chép script</UButton>
+        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Script chứa mã link chia sẻ chỉ đọc: ai có script đều xem được tiến độ như người có link. Tắt link chia sẻ
+          thì widget ngừng hoạt động.
+        </p>
+      </template>
+      <UAlert
+        v-else
+        color="info"
+        variant="subtle"
+        icon="i-lucide-link"
+        title="Cần bật link chia sẻ chỉ đọc"
+        :description="isOwner ? 'Widget đọc dữ liệu qua link chia sẻ chỉ đọc.' : 'Widget đọc dữ liệu qua link chia sẻ chỉ đọc. Nhờ chủ bảng bật trong Cài đặt > Thành viên.'"
+        :actions="isOwner ? [{ label: 'Bật link chia sẻ', color: 'neutral', variant: 'outline', loading: shareBusy, onClick: () => onToggleShare(true) }] : []"
+      />
     </section>
 
         </div>
