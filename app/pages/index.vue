@@ -15,7 +15,7 @@ const { ready: tasksReady, mainTasksFor, sideTasksFor, createSideTask, updateSid
 const { today, dayDoc, isCompleted, completionOf, complete, uncomplete, closePastDays, markChestOpened } = useDay();
 const { showError } = useErrorToast();
 const { check: checkReminders } = useReminders();
-const { fetchDays, currentStreaks } = useHistory();
+const { fetchDays, currentFullStreak } = useHistory();
 const { tasks } = useTasks();
 const { items: queuedItems, online, enqueue, isQueued, flush: flushQueue } = useProofQueue();
 const toast = useToast();
@@ -46,26 +46,14 @@ const onQueueProofs = async (files: File[]) => {
   }
 };
 
-// Streak từng nhiệm vụ: đọc lịch sử 120 ngày gần nhất một lần, tính lại khi tích/bỏ tích
+// Chuỗi ngày hoàn thành đủ nhiệm vụ chính: đọc lịch sử 120 ngày gần nhất một lần, tính lại khi tích/bỏ tích
 const streakDays = ref<DayMap>({});
-const streaks = computed(() => {
+const fullStreak = computed(() => {
   const ws = workspace.value;
-  if (!ws) return {} as Record<string, number>;
+  if (!ws) return 0;
   const days = { ...streakDays.value };
   if (dayDoc.value) days[today.value] = dayDoc.value;
-  return currentStreaks(tasks.value, days, ws.createdDate, today.value, ws.restDays ?? []);
-});
-
-/** Số ngày liên tiếp không mất tiền, đếm lùi từ hôm qua (hôm nay cộng thêm nếu đã xong hết) */
-const noPenaltyStreak = computed(() => {
-  let count = 0;
-  for (let d = addDays(today.value, -1); d >= (workspace.value?.createdDate ?? d); d = addDays(d, -1)) {
-    const day = streakDays.value[d];
-    if (!day?.closed) break;
-    if (day.penalty > 0) break;
-    count++;
-  }
-  return allDone.value ? count + 1 : count;
+  return currentFullStreak(tasks.value, days, ws.createdDate, today.value, ws.restDays ?? []);
 });
 
 /** etag của mọi ảnh đã nộp (120 ngày gần nhất + hôm nay + việc phụ) → ngày dùng, để chặn nộp lại */
@@ -87,7 +75,7 @@ watch(
     try {
       streakDays.value = await fetchDays(wsId, addDays(date, -STREAK_LOOKBACK_DAYS), addDays(date, -1));
     } catch (error) {
-      console.warn("Không tải được lịch sử streak", error);
+      console.warn("Không tải được lịch sử chuỗi", error);
     }
   },
   { immediate: true }
@@ -335,10 +323,21 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
       <!-- Nhiệm vụ hôm nay: mỗi việc một ô, rương ở cuối -->
       <div v-if="mainToday.length" class="mt-3 flex items-center gap-3">
         <div class="min-w-0 flex-1">
-          <p class="text-2xl font-bold">
-            {{ doneMain.length }}/{{ mainToday.length }}
-            <span class="text-base font-normal text-gray-500 dark:text-gray-400">nhiệm vụ chính</span>
-          </p>
+          <div class="flex flex-wrap items-center gap-x-2">
+            <p class="text-2xl font-bold">
+              {{ doneMain.length }}/{{ mainToday.length }}
+              <span class="text-base font-normal text-gray-500 dark:text-gray-400">nhiệm vụ chính</span>
+            </p>
+            <!-- Chuỗi ngày liên tiếp hoàn thành đủ (hôm nay chưa xong thì vẫn giữ chuỗi tới hôm qua) -->
+            <UBadge
+              :color="fullStreak ? 'warning' : 'neutral'"
+              variant="subtle"
+              icon="i-lucide-flame"
+              :title="`Chuỗi ${fullStreak} ngày liên tiếp hoàn thành đủ nhiệm vụ chính`"
+            >
+              {{ fullStreak }} ngày
+            </UBadge>
+          </div>
           <div
             class="mt-2 flex gap-1"
             role="progressbar"
@@ -435,7 +434,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
         Xong hết việc chính hôm nay
       </p>
       <p class="mt-1 text-sm text-green-50">
-        <template v-if="rewardToday">Đã nhận rương +{{ formatMoney(rewardToday) }}. </template>{{ noPenaltyStreak }} ngày liên tiếp không mất tiền. Giữ nhịp nhé!
+        <template v-if="rewardToday">Đã nhận rương +{{ formatMoney(rewardToday) }}. </template>Chuỗi {{ fullStreak }} ngày liên tiếp hoàn thành đủ. Giữ nhịp nhé!
       </p>
     </section>
     <ChestRewardModal
@@ -443,7 +442,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
       :amount="rewardToday"
       :chests="chests"
       :opened="chestOpened"
-      :streak="noPenaltyStreak"
+      :streak="fullStreak"
       @opened="onChestOpened"
     />
 
@@ -481,7 +480,6 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
             :key="task.id"
             :task="task"
             :completion="completionOf(task.id)"
-            :streak="streaks[task.lineageId]"
             :queued="isQueued(task.id, today)"
             :can-act="canTickMain"
             :ticked-by="tickedBy(task.id)"

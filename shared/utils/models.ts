@@ -55,7 +55,7 @@ export interface Workspace {
   /** Khóa tuần đã gửi gần nhất, tránh gửi trùng */
   lastWeeklyReportKey?: string | null;
   /**
-   * Chế độ nghỉ: các ngày (YYYY-MM-DD) không tính nhiệm vụ chính, không phạt, không đứt streak.
+   * Chế độ nghỉ: các ngày (YYYY-MM-DD) không tính nhiệm vụ chính, không phạt, không đứt chuỗi.
    * Chỉ được thêm cho hôm nay hoặc tương lai (không khai nghỉ lùi để tránh né phạt).
    */
   restDays?: string[];

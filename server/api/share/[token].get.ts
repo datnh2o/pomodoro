@@ -1,7 +1,7 @@
 import { useAdminDb } from "../../utils/adminDb";
 import { addDays, todayKey } from "#shared/utils/dates";
 import { isMainTask, isRestDay, isScheduledOn, penaltySettingsOn, type DayDoc, type Task, type Workspace } from "#shared/utils/models";
-import { computeStats, currentStreaks, normalizeDay, STREAK_LOOKBACK_DAYS, type DayMap } from "#shared/utils/stats";
+import { computeStats, normalizeDay, STREAK_LOOKBACK_DAYS, type DayMap } from "#shared/utils/stats";
 
 /**
  * Dữ liệu chỉ đọc cho link chia sẻ /share/{token}.
@@ -37,7 +37,6 @@ export default defineEventHandler(async (event) => {
 
   const restDays = ws.restDays ?? [];
   const month = computeStats({ from: monthStart, to: today, days, tasks, earliest: ws.createdDate, today, restDays });
-  const streaks = currentStreaks(tasks, days, ws.createdDate, today, restDays);
   const todayDay = days[today];
   const restToday = isRestDay(restDays, today);
 
@@ -54,7 +53,6 @@ export default defineEventHandler(async (event) => {
         reminderTime: t.reminderTime,
         done: !!completion,
         proofs: completion?.proofs.map((p) => p.url) ?? [],
-        streak: streaks[t.lineageId] ?? 0,
       };
     });
 
@@ -65,6 +63,8 @@ export default defineEventHandler(async (event) => {
     restToday,
     penaltyAmount: penaltySettingsOn(ws, today).amount,
     penaltyTotal: ws.penaltyTotal,
+    /** Chuỗi ngày liên tiếp hoàn thành đủ nhiệm vụ chính */
+    streak: month.streak,
     rewardTotal: ws.rewardTotal ?? 0,
     month: {
       penalty: month.penalty,

@@ -1,6 +1,6 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
 import type { DayDoc } from "#shared/utils/models";
-import { computeStats, currentStreaks, normalizeDay, type DayMap } from "#shared/utils/stats";
+import { computeStats, currentFullStreak, normalizeDay, type DayMap } from "#shared/utils/stats";
 
 export { STREAK_LOOKBACK_DAYS } from "#shared/utils/stats";
 export type { DayMap, DayStatus, DaySummary, LineageStats, PeriodStats } from "#shared/utils/stats";
@@ -24,5 +24,5 @@ export const useHistory = () => {
     return map;
   };
 
-  return { fetchDays, computeStats, currentStreaks };
+  return { fetchDays, computeStats, currentFullStreak };
 };

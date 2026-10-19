@@ -7,8 +7,6 @@ const props = defineProps<{
   completion?: Completion;
   /** Người dùng có quyền tích/bỏ tích không (chỉ chủ sở hữu) */
   canAct: boolean;
-  /** Số ngày liên tiếp đã hoàn thành (không tính hôm nay nếu chưa xong) */
-  streak?: number;
   /** Ảnh đang chờ tải lên (mất mạng) */
   queued?: boolean;
   /** Tên người đã tích nếu không phải mình */
@@ -96,9 +94,6 @@ const onSwipe = () => primaryAction();
         </UBadge>
         <UBadge v-if="task.requiresProof" color="neutral" variant="subtle" size="sm" icon="i-lucide-camera">
           Cần ảnh
-        </UBadge>
-        <UBadge v-if="streak" color="error" variant="subtle" size="sm" icon="i-lucide-flame">
-          {{ streak }} ngày liên tiếp
         </UBadge>
         <UBadge v-if="queued && !done" color="warning" variant="subtle" size="sm" icon="i-lucide-cloud-upload">
           Chờ tải ảnh

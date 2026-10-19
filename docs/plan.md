@@ -139,6 +139,8 @@ lên lịch nhiệm vụ chính, không phạt, không đứt streak, không g�
   nay), cấp độ theo số rương (`app/utils/game.ts`). Xong việc cuối thì bật cửa sổ mở rương (âm thanh, xu bay,
   pháo giấy). "Đã mở" lưu ở `days/{ngày}.chestOpenedAt` nên đồng bộ mọi thiết bị; chỉ chủ sở hữu ghi được.
 - Thống kê thưởng ở Tổng hợp (thưởng, phạt, chênh lệch), Nhật ký (ngày có thưởng), link chia sẻ, email tuần.
+- Chuỗi: chỉ một chuỗi chung = số ngày liên tiếp hoàn thành đủ nhiệm vụ chính (`currentFullStreak`), bỏ chuỗi
+  riêng từng nhiệm vụ. Ngày nghỉ / không có việc bỏ qua; hôm nay chưa xong chưa tính là đứt.
 - Rules: thành viên có quyền `add` được ghi thêm `rewardTotal`, `rewardDays` khi chốt ngày, nhưng không ghi
   được `chestOpenedAt`.
 

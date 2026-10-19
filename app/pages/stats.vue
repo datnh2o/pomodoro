@@ -63,7 +63,7 @@ const load = async () => {
   if (!ws || !tasksReady.value) return;
   loading.value = true;
   try {
-    // Lấy thêm 120 ngày trước hôm nay để tính streak hiện tại
+    // Lấy thêm 120 ngày trước hôm nay để tính chuỗi hiện tại
     const from = [range.value.from, addDays(today.value, -STREAK_LOOKBACK_DAYS)].sort()[0]!;
     const to = [range.value.to, today.value].sort().at(-1)!;
     days.value = await fetchDays(ws.id, from, to);
@@ -149,9 +149,18 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
       </section>
 
       <!-- Ô số liệu ngày -->
-      <section class="grid grid-cols-2 gap-2">
+      <section class="grid grid-cols-3 gap-2">
+        <StatTile
+          label="Chuỗi"
+          compact
+          :value="`${stats.streak} ngày`"
+          :hint="`Dài nhất trong kỳ: ${stats.longestStreak}`"
+          :tone="stats.streak ? 'good' : 'neutral'"
+          icon="i-lucide-flame"
+        />
         <StatTile
           label="Ngày làm đủ"
+          compact
           :value="completionRate === null ? '–' : `${completionRate}%`"
           :hint="`${stats.fullDays}/${stats.countedDays} ngày, tính đến hôm qua`"
           :tone="completionRate !== null && completionRate >= 80 ? 'good' : 'neutral'"
@@ -159,6 +168,7 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
         />
         <StatTile
           label="Lần bỏ lỡ"
+          compact
           :value="String(stats.missedCount)"
           :tone="stats.missedCount ? 'bad' : 'good'"
           icon="i-lucide-circle-x"
@@ -190,8 +200,7 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
               <tr>
                 <th class="px-3 py-2 font-medium">Nhiệm vụ</th>
                 <th class="px-2 py-2 text-right font-medium">Làm/Lịch</th>
-                <th class="px-2 py-2 text-right font-medium">Tỷ lệ</th>
-                <th class="px-3 py-2 text-right font-medium">Chuỗi</th>
+                <th class="px-3 py-2 text-right font-medium">Tỷ lệ</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -201,14 +210,7 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
                   <p v-if="row.missed" class="text-xs text-red-600 dark:text-red-400">Bỏ lỡ {{ row.missed }} lần</p>
                 </td>
                 <td class="px-2 py-2 text-right tabular-nums">{{ row.completed }}/{{ row.scheduled }}</td>
-                <td class="px-2 py-2 text-right tabular-nums">{{ rate(row.completed, row.scheduled) }}</td>
-                <td class="px-3 py-2 text-right tabular-nums">
-                  <span class="inline-flex items-center gap-0.5" :title="`Dài nhất trong kỳ: ${row.longestStreak}`">
-                    <UIcon name="i-lucide-flame" :class="['h-4 w-4', row.currentStreak ? 'text-orange-500' : 'text-gray-300']" />
-                    {{ row.currentStreak }}
-                  </span>
-                  <span class="block text-[11px] text-gray-400">max {{ row.longestStreak }}</span>
-                </td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ rate(row.completed, row.scheduled) }}</td>
               </tr>
             </tbody>
           </table>

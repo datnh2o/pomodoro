@@ -9,7 +9,7 @@ const props = defineProps<{
   chests: number;
   /** Hôm nay đã mở rương trên máy này chưa */
   opened: boolean;
-  /** Số ngày liên tiếp không mất tiền */
+  /** Chuỗi ngày liên tiếp hoàn thành đủ nhiệm vụ chính */
   streak: number;
 }>();
 const open = defineModel<boolean>("open", { default: false });
@@ -141,7 +141,7 @@ const coins = Array.from({ length: 12 }, (_, i) => {
               </div>
               <p class="mt-1.5 text-xs text-amber-50">
                 <UIcon name="i-lucide-flame" class="mr-0.5 inline-block h-3.5 w-3.5 align-text-bottom" />
-                {{ streak }} ngày liên tiếp không mất tiền
+                Chuỗi {{ streak }} ngày liên tiếp hoàn thành đủ
               </p>
             </div>
             <p v-if="amount > 0" class="mt-3 text-[11px] text-amber-50/90">

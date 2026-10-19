@@ -18,9 +18,9 @@ interface ShareData {
     reminderTime: string | null;
     done: boolean;
     proofs: string[];
-    streak: number;
   }>;
-  perTask: Array<{ lineageId: string; title: string; completed: number; scheduled: number; missed: number; currentStreak: number }>;
+  perTask: Array<{ lineageId: string; title: string; completed: number; scheduled: number; missed: number }>;
+  streak: number;
 }
 
 const route = useRoute();
@@ -69,10 +69,15 @@ const rate = computed(() => {
         <section class="rounded-2xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
           <p class="text-sm text-gray-500 dark:text-gray-400">{{ formatDateVi(data.today) }}</p>
           <div class="mt-1 flex items-end justify-between gap-3">
-            <p class="text-2xl font-bold">
-              {{ doneCount }}/{{ data.todayMain.length }}
-              <span class="text-base font-normal text-gray-500 dark:text-gray-400">nhiệm vụ chính</span>
-            </p>
+            <div>
+              <p class="text-2xl font-bold">
+                {{ doneCount }}/{{ data.todayMain.length }}
+                <span class="text-base font-normal text-gray-500 dark:text-gray-400">nhiệm vụ chính</span>
+              </p>
+              <UBadge :color="data.streak ? 'warning' : 'neutral'" variant="subtle" icon="i-lucide-flame" class="mt-1">
+                Chuỗi {{ data.streak }} ngày hoàn thành đủ
+              </UBadge>
+            </div>
             <div class="text-right">
               <p class="text-xs text-gray-500 dark:text-gray-400">Tổng nợ</p>
               <p class="font-bold text-red-600 dark:text-red-400">{{ formatMoney(data.penaltyTotal) }}</p>
@@ -91,7 +96,6 @@ const rate = computed(() => {
               <div class="flex items-center gap-2">
                 <UIcon :name="task.done ? 'i-lucide-circle-check' : 'i-lucide-circle'" :class="['h-5 w-5 shrink-0', task.done ? 'text-green-600' : 'text-gray-400']" />
                 <span :class="['font-medium', task.done && 'text-gray-500 dark:text-gray-400 line-through']">{{ task.title }}</span>
-                <UBadge v-if="task.streak" color="error" variant="subtle" size="sm" icon="i-lucide-flame" class="ml-auto">{{ task.streak }}</UBadge>
               </div>
               <div v-if="task.proofs.length" class="mt-2 flex flex-wrap gap-1.5">
                 <a v-for="url in task.proofs" :key="url" :href="url" target="_blank" rel="noopener" class="block h-14 w-14 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
@@ -119,17 +123,14 @@ const rate = computed(() => {
                 <tr>
                   <th class="px-3 py-2 font-medium">Nhiệm vụ</th>
                   <th class="px-2 py-2 text-right font-medium">Làm/Lịch</th>
-                  <th class="px-3 py-2 text-right font-medium">Chuỗi</th>
+                  <th class="px-3 py-2 text-right font-medium">Bỏ lỡ</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                 <tr v-for="row in data.perTask" :key="row.lineageId">
                   <td class="px-3 py-2 font-medium">{{ row.title }}</td>
                   <td class="px-2 py-2 text-right tabular-nums">{{ row.completed }}/{{ row.scheduled }}</td>
-                  <td class="px-3 py-2 text-right tabular-nums">
-                    <UIcon name="i-lucide-flame" :class="['inline-block h-4 w-4 align-text-bottom', row.currentStreak ? 'text-orange-500' : 'text-gray-300']" />
-                    {{ row.currentStreak }}
-                  </td>
+                  <td :class="['px-3 py-2 text-right tabular-nums', row.missed && 'text-red-600 dark:text-red-400']">{{ row.missed }}</td>
                 </tr>
               </tbody>
             </table>
