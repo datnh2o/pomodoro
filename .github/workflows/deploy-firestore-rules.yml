@@ -2,7 +2,8 @@ name: Deploy Firestore rules
 
 # Tự deploy firestore.rules khi file đổi trên main, khỏi phải dán tay vào Firebase Console.
 # Cần secret FIREBASE_SERVICE_ACCOUNT (JSON service account, cùng nội dung với
-# NUXT_FIREBASE_SERVICE_ACCOUNT) trong Settings > Secrets and variables > Actions.
+# NUXT_FIREBASE_SERVICE_ACCOUNT) trong environment "Production"
+# (Settings > Environments > Production, hoặc Settings > Secrets and variables > Actions).
 on:
   push:
     branches: [main]
@@ -17,6 +18,8 @@ jobs:
   deploy:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
+    # Secret nằm ở environment secret, job phải khai báo environment mới đọc được
+    environment: Production
     env:
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
     steps:
