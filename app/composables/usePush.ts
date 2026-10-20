@@ -51,23 +51,44 @@ export const usePush = () => {
     return doc($firebase.firestore, "workspaces", ws.id, "pushSubscriptions", await sha256Hex(endpoint));
   };
 
+  /**
+   * Chờ service worker có worker "active" (Safari iOS từ chối đăng ký push khi worker mới chỉ đang cài,
+   * ví dụ ngay sau một lần deploy). `serviceWorker.ready` chỉ resolve khi đã active; có timeout để không treo.
+   */
+  const waitForActiveWorker = async (timeoutMs = 10_000): Promise<ServiceWorkerRegistration> => {
+    const existing = await navigator.serviceWorker.getRegistration();
+    if (!existing) {
+      throw new Error("Service worker chưa được cài. Nhắc đẩy chỉ chạy ở bản đã deploy; thử đóng app, mở lại từ icon màn hình chính rồi bật lại.");
+    }
+    if (existing.active) return existing;
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Service worker chưa sẵn sàng. Thử đóng app, mở lại từ icon màn hình chính rồi bật lại.")), timeoutMs)
+    );
+    return Promise.race([navigator.serviceWorker.ready, timeout]);
+  };
+
   const subscribe = async () => {
     busy.value = true;
     try {
       const uid = user.value?.uid;
       if (!uid) throw new Error("User is not authenticated");
-      const registration = await navigator.serviceWorker.getRegistration();
-      if (!registration) {
-        throw new Error("Service worker chưa sẵn sàng. Nhắc đẩy chỉ chạy ở bản build/production, không chạy ở chế độ dev.");
-      }
+      // Xin quyền trước, ngay trong cử chỉ bấm (iOS yêu cầu), rồi mới chờ worker
       permission.value = await Notification.requestPermission();
       if (permission.value !== "granted") throw new Error("Bạn chưa cho phép thông báo.");
-      const subscription =
-        (await registration.pushManager.getSubscription()) ??
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
-        }));
+      const registration = await waitForActiveWorker();
+
+      const options = { userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource };
+      let subscription = await registration.pushManager.getSubscription();
+      if (!subscription) {
+        try {
+          subscription = await registration.pushManager.subscribe(options);
+        } catch (error) {
+          // Worker vừa đổi (deploy mới) đúng lúc bấm: chờ active lại rồi thử thêm một lần
+          if (!/active worker/i.test((error as Error).message)) throw error;
+          const again = await waitForActiveWorker();
+          subscription = await again.pushManager.subscribe(options);
+        }
+      }
       const json = subscription.toJSON();
       if (!json.keys?.p256dh || !json.keys.auth) throw new Error("Trình duyệt không trả về khóa đăng ký");
       const data: PushSubscriptionDoc = {
