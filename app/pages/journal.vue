@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DayMap, DaySummary } from "~/composables/useHistory";
-import { isMainTask, isRestDay, isScheduledOn, isSideTask, type MainTask } from "#shared/utils/models";
+import { isMainTask, isRestDay, isScheduledOn, isSideTask, type MainTask, type SideTask } from "#shared/utils/models";
+import { PERIODS, groupByPeriod, slotTimeOf } from "~/utils/periods";
 import { addDays, formatDateVi, formatMoney, todayKey, weekdayOf } from "#shared/utils/dates";
 
 const { workspace } = useWorkspace();
@@ -96,18 +97,36 @@ interface DetailRow {
   proofs: { url: string; publicId: string }[];
 }
 const selectedIsRest = computed(() => isRestDay(workspace.value?.restDays, selected.value));
+/** Giờ "đến lượt" để sắp xếp và chia buổi, giống màn Hôm nay */
+const slotKey = (t: MainTask | SideTask) => slotTimeOf(t) ?? "99:99";
 const selectedMain = computed<DetailRow[]>(() =>
   (selectedIsRest.value ? [] : tasks.value)
     .filter(isMainTask)
     .filter((t) => isScheduledOn(t, selected.value))
+    .sort((a, b) => slotKey(a).localeCompare(slotKey(b)) || a.order - b.order)
     .map((task) => {
       const completion = selectedDay.value?.completions[task.id];
       return { task, done: !!completion, proofs: completion?.proofs ?? [] };
     })
 );
 const selectedSide = computed(() =>
-  tasks.value.filter(isSideTask).filter((t) => t.doneDate === selected.value)
+  tasks.value
+    .filter(isSideTask)
+    .filter((t) => t.doneDate === selected.value)
+    .sort((a, b) => slotKey(a).localeCompare(slotKey(b)) || (a.doneAt ?? 0) - (b.doneAt ?? 0))
 );
+/** Chia theo buổi; mỗi nhóm giữ cả việc chính (dạng DetailRow) và việc phụ */
+const selectedGroups = computed(() => {
+  const mainByPeriod = groupByPeriod(selectedMain.value.map((r) => r.task));
+  const sideByPeriod = groupByPeriod(selectedSide.value);
+  const rowOf = new Map(selectedMain.value.map((r) => [r.task.id, r]));
+  return PERIODS.map((p) => ({
+    ...p,
+    main: (mainByPeriod.find((g) => g.key === p.key)?.items ?? []).map((t) => rowOf.get(t.id)!),
+    side: sideByPeriod.find((g) => g.key === p.key)?.items ?? [],
+  })).filter((g) => g.main.length || g.side.length);
+});
+const showPeriodHeader = computed(() => selectedGroups.value.length > 1 || selectedGroups.value[0]?.key !== "anytime");
 </script>
 
 <template>
@@ -180,11 +199,21 @@ const selectedSide = computed(() =>
         <div v-if="!selectedMain.length && !selectedSide.length" class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-5 text-center text-sm text-gray-500 dark:text-gray-400">
           Không có nhiệm vụ nào trong ngày này.
         </div>
-        <ul v-else class="flex flex-col gap-2">
-          <li v-for="row in selectedMain" :key="row.task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+        <div v-else class="flex flex-col gap-2">
+        <template v-for="group in selectedGroups" :key="group.key">
+          <PeriodHeader
+            v-if="showPeriodHeader"
+            :label="group.label"
+            :icon="group.icon"
+            :done="group.main.filter((r) => r.done).length + group.side.length"
+            :total="group.main.length + group.side.length"
+          />
+          <ul class="flex flex-col gap-2">
+          <li v-for="row in group.main" :key="row.task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
             <div class="flex items-center gap-2">
               <UIcon :name="row.done ? 'i-lucide-circle-check' : 'i-lucide-circle-x'" :class="['h-5 w-5 shrink-0', row.done ? 'text-green-600' : 'text-red-500']" />
               <span :class="['font-medium', !row.done && 'text-gray-500 dark:text-gray-400']">{{ row.task.title }}</span>
+              <span v-if="slotTimeOf(row.task)" class="text-xs text-gray-400">{{ slotTimeOf(row.task) }}</span>
               <span class="ml-auto text-xs text-gray-400">{{ row.done ? "Đã làm" : selected < today ? "Bỏ lỡ" : "Chưa làm" }}</span>
             </div>
             <div v-if="row.proofs.length" class="mt-2 flex flex-wrap gap-1.5">
@@ -193,10 +222,11 @@ const selectedSide = computed(() =>
               </a>
             </div>
           </li>
-          <li v-for="task in selectedSide" :key="task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 text-sm shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+          <li v-for="task in group.side" :key="task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 text-sm shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-check" class="h-4 w-4 text-green-600" />
               <span>{{ task.title }}</span>
+              <span v-if="slotTimeOf(task)" class="text-xs text-gray-400">{{ slotTimeOf(task) }}</span>
               <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">Phụ</UBadge>
             </div>
             <div v-if="task.proofs?.length" class="mt-2 flex flex-wrap gap-1.5">
@@ -205,7 +235,9 @@ const selectedSide = computed(() =>
               </a>
             </div>
           </li>
-        </ul>
+          </ul>
+        </template>
+        </div>
       </template>
     </section>
   </div>

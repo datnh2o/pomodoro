@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { MainTask } from "#shared/utils/models";
+import { groupByPeriod, slotTimeOf } from "~/utils/periods";
 import type { MainTaskInput } from "~/composables/useTasks";
 import type { SubAccountInput } from "~/composables/useMembers";
 import {
@@ -225,7 +226,14 @@ const copyWidgetScript = async () => {
 };
 
 const today = computed(() => todayKey());
-const activeMain = computed(() => mainTasks.value.filter((t) => isActiveFrom(t, today.value)));
+const activeMain = computed(() =>
+  mainTasks.value
+    .filter((t) => isActiveFrom(t, today.value))
+    .sort((a, b) => (slotTimeOf(a) ?? "99:99").localeCompare(slotTimeOf(b) ?? "99:99") || a.order - b.order)
+);
+/** Chia theo buổi như màn Hôm nay (Sáng / Trưa-chiều / Tối / Chưa đặt giờ) */
+const activeGroups = computed(() => groupByPeriod(activeMain.value));
+const showPeriodHeader = computed(() => activeGroups.value.length > 1 || activeGroups.value[0]?.key !== "anytime");
 
 const weekdaysLabel = (task: MainTask) => formatWeekdays(task.weekdays);
 
@@ -351,9 +359,12 @@ const onChangePassword = async () => {
       <div v-if="!activeMain.length" class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-gray-500 dark:text-gray-400">
         Chưa có nhiệm vụ chính nào.
       </div>
-      <ul v-else class="flex flex-col gap-2">
+      <div v-else class="flex flex-col gap-2">
+      <template v-for="group in activeGroups" :key="group.key">
+        <PeriodHeader v-if="showPeriodHeader" :label="group.label" :icon="group.icon" :done="group.items.length" :total="group.items.length" />
+        <ul class="flex flex-col gap-2">
         <li
-          v-for="task in activeMain"
+          v-for="task in group.items"
           :key="task.id"
           class="flex items-start gap-3 rounded-xl bg-white dark:bg-gray-900 p-3 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800"
         >
@@ -371,7 +382,9 @@ const onChangePassword = async () => {
             <UButton color="neutral" variant="ghost" size="xs" icon="i-lucide-ellipsis-vertical" aria-label="Tùy chọn" />
           </UDropdownMenu>
         </li>
-      </ul>
+        </ul>
+      </template>
+      </div>
     </section>
 
         </div>
