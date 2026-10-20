@@ -9,26 +9,27 @@ const props = defineProps<{
   canEdit: boolean;
 }>();
 
-const emit = defineEmits<{ toggle: [done: boolean]; edit: []; delete: []; proofFiles: [files: File[]] }>();
+const emit = defineEmits<{ complete: []; edit: []; delete: []; proofFiles: [files: File[]] }>();
 
 const { thumbnailUrl, proofViewUrl } = useProofUpload();
 
 // Việc cần ảnh: mở camera ngay trong cử chỉ bấm
 const cameraInput = ref<HTMLInputElement | null>(null);
-const onToggleClick = () => {
-  if (!props.canAct) return;
-  if (!done.value && props.task.requiresProof) {
+// Đã xong là chốt, không bỏ tích
+const onCompleteClick = () => {
+  if (!props.canAct || done.value) return;
+  if (props.task.requiresProof) {
     cameraInput.value?.click();
     return;
   }
-  emit("toggle", !done.value);
+  emit("complete");
 };
 const onCameraPick = (event: Event) => {
   const input = event.target as HTMLInputElement;
   const files = Array.from(input.files ?? []);
   input.value = "";
   if (files.length) emit("proofFiles", files);
-  else emit("toggle", true);
+  else emit("complete");
 };
 const done = computed(() => props.task.doneDate !== null);
 const carriedOver = computed(() => !done.value && props.task.createdDate < props.today);
@@ -55,10 +56,10 @@ const menu = computed(() => [
     <input ref="cameraInput" type="file" accept="image/*" capture="environment" multiple class="sr-only" tabindex="-1" @change="onCameraPick" />
     <button
       type="button"
-      :disabled="!canAct"
-      :aria-label="done ? 'Bỏ tích' : 'Hoàn thành'"
+      :disabled="!canAct || done"
+      :aria-label="done ? 'Đã hoàn thành' : 'Hoàn thành'"
       class="mt-0.5 shrink-0 rounded-full disabled:opacity-50"
-      @click="onToggleClick"
+      @click="onCompleteClick"
     >
       <UIcon
         :name="done ? 'i-lucide-circle-check' : task.requiresProof ? 'i-lucide-camera' : 'i-lucide-circle'"

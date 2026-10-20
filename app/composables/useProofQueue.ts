@@ -47,7 +47,7 @@ export const useProofQueue = () => {
   const { workspace } = useWorkspace();
   const { upload } = useProofUpload();
   const { complete } = useDay();
-  const { setSideTaskDone } = useTasks();
+  const { completeSideTask } = useTasks();
 
   const items = useState<QueuedProof[]>("proofQueue:items", () => []);
   const flushing = useState<boolean>("proofQueue:flushing", () => false);
@@ -109,7 +109,7 @@ export const useProofQueue = () => {
             proofs.push(await upload(new File([file], "proof.jpg", { type: file.type || "image/jpeg" }), `${ws.id}/${entry.date}`));
           }
           if (task.type === "main") await complete(task, proofs, entry.date);
-          else await setSideTaskDone(task, true, proofs, entry.date);
+          else await completeSideTask(task, proofs, entry.date);
           await remove(entry.id);
           done++;
         } catch (error) {

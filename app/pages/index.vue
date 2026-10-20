@@ -11,8 +11,8 @@ import { levelOf } from "~/utils/game";
 const { user } = useAuth();
 const { workspace, can, isOwner } = useWorkspace();
 const { confirmAction } = useConfirm();
-const { ready: tasksReady, mainTasksFor, sideTasksFor, createSideTask, updateSideTask, setSideTaskDone, deleteSideTask } = useTasks();
-const { today, dayDoc, isCompleted, completionOf, complete, uncomplete, closePastDays, markChestOpened } = useDay();
+const { ready: tasksReady, mainTasksFor, sideTasksFor, createSideTask, updateSideTask, completeSideTask, deleteSideTask } = useTasks();
+const { today, dayDoc, isCompleted, completionOf, complete, closePastDays, markChestOpened } = useDay();
 const { showError } = useErrorToast();
 const { check: checkReminders } = useReminders();
 const { fetchDays, currentFullStreak } = useHistory();
@@ -46,7 +46,7 @@ const onQueueProofs = async (files: File[]) => {
   }
 };
 
-// Chuỗi ngày hoàn thành đủ nhiệm vụ chính: đọc lịch sử 120 ngày gần nhất một lần, tính lại khi tích/bỏ tích
+// Chuỗi ngày hoàn thành đủ nhiệm vụ chính: đọc lịch sử 120 ngày gần nhất một lần, tính lại khi tích
 const streakDays = ref<DayMap>({});
 const fullStreak = computed(() => {
   const ws = workspace.value;
@@ -85,9 +85,7 @@ const isRest = computed(() => isRestDay(workspace.value?.restDays, today.value))
 /** Giờ "đến lượt" để sắp xếp, cũng là giờ chia buổi: giờ nhắc, không có thì hạn, chưa đặt giờ thì cuối */
 const slotKey = (t: MainTask | SideTask) => slotTimeOf(t) ?? "99:99";
 const mainToday = computed(() =>
-  (isRest.value ? [] : mainTasksFor(today.value))
-    .slice()
-    .sort((a, b) => Number(isCompleted(a.id)) - Number(isCompleted(b.id)) || slotKey(a).localeCompare(slotKey(b)) || a.order - b.order)
+  (isRest.value ? [] : mainTasksFor(today.value)).slice().sort((a, b) => slotKey(a).localeCompare(slotKey(b)) || a.order - b.order)
 );
 /** Chỉ chủ sở hữu tích nhiệm vụ chính của mình */
 const canTickMain = computed(() => isOwner.value && can("add") && !dayDoc.value?.closed);
@@ -103,12 +101,18 @@ const sideToday = computed(() => sideTasksFor(today.value));
 
 // ---- Chia theo buổi (Sáng / Trưa-chiều / Tối) theo giờ đã đặt ----
 const sideSorted = computed(() =>
-  sideToday.value
-    .slice()
-    .sort((a, b) => Number(a.doneDate !== null) - Number(b.doneDate !== null) || slotKey(a).localeCompare(slotKey(b)) || a.createdAt - b.createdAt)
+  sideToday.value.slice().sort((a, b) => slotKey(a).localeCompare(slotKey(b)) || a.createdAt - b.createdAt)
 );
 const mainGroups = computed(() => groupByPeriod(mainToday.value));
 const sideGroups = computed(() => groupByPeriod(sideSorted.value));
+/** Việc đã xong không hiện ở đây (xem lại trong Nhật ký), không bỏ tích được. Số đếm trên tiêu đề buổi vẫn tính đủ */
+type CountedGroup<T> = PeriodGroup<T> & { done: number; total: number };
+const pendingOnly = <T extends MainTask | SideTask>(groups: PeriodGroup<T>[], isDone: (t: T) => boolean): CountedGroup<T>[] =>
+  groups
+    .map((g) => ({ ...g, done: g.items.filter(isDone).length, total: g.items.length, items: g.items.filter((t) => !isDone(t)) }))
+    .filter((g) => g.items.length > 0);
+const mainPendingGroups = computed(() => pendingOnly(mainGroups.value, (t) => isCompleted(t.id)));
+const sidePendingGroups = computed(() => pendingOnly(sideGroups.value, (t) => t.doneDate !== null));
 const { nowHHmm } = useClock();
 const currentPeriod = computed(() => periodOf(nowHHmm.value));
 /** Không hiện tiêu đề khi mọi việc đều chưa đặt giờ (chỉ có một nhóm, chẳng có gì để chia) */
@@ -127,7 +131,7 @@ const reminderTargets = computed<ReminderTarget[]>(() => [
 const nextTask = computed(() => pendingMain.value[0] ?? null);
 const allDone = computed(() => mainToday.value.length > 0 && pendingMain.value.length === 0);
 
-/** Thưởng của hôm nay nếu xong hết; tiền vào ví thật khi chốt ngày (bỏ tích trước 0h là mất) */
+/** Thưởng của hôm nay nếu xong hết; tiền vào ví thật khi chốt ngày */
 const rewardToday = computed(() => (workspace.value ? penaltySettingsOn(workspace.value, today.value).reward : 0));
 const earnedToday = computed(() => (allDone.value ? rewardToday.value : 0));
 const walletReward = computed(() => (workspace.value?.rewardTotal ?? 0) + earnedToday.value);
@@ -231,18 +235,10 @@ const onProofConfirm = async (proofs: Proof[]) => {
   if (!task) return;
   try {
     if (task.type === "main") await complete(task, proofs);
-    else await setSideTaskDone(task, true, proofs);
+    else await completeSideTask(task, proofs);
     toast.add({ title: "Đã hoàn thành", description: task.title, color: "success", icon: "i-lucide-circle-check" });
   } catch (error) {
     showError("Không tích được", error);
-  }
-};
-
-const onUncomplete = async (task: MainTask) => {
-  try {
-    await uncomplete(task);
-  } catch (error) {
-    showError("Không bỏ tích được", error);
   }
 };
 
@@ -275,13 +271,13 @@ const onSaveSide = async (input: Required<SideTaskInput>) => {
     showError("Không lưu được", error);
   }
 };
-const onToggleSide = async (task: SideTask, done: boolean) => {
-  if (done && task.requiresProof) {
+const onCompleteSide = async (task: SideTask) => {
+  if (task.requiresProof) {
     openProof(task);
     return;
   }
   try {
-    await setSideTaskDone(task, done);
+    await completeSideTask(task);
   } catch (error) {
     showError("Không cập nhật được", error);
   }
@@ -456,7 +452,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
     <template #main>
     <!-- Nhiệm vụ chính -->
     <section>
-      <p class="mb-2 text-xs text-gray-400">Vuốt ngang một việc để nộp ảnh / hoàn thành. Quá hạn giờ là không tích được nữa.</p>
+      <p class="mb-2 text-xs text-gray-400">Vuốt ngang một việc để nộp ảnh / hoàn thành. Quá hạn giờ là không tích được nữa. Việc đã xong xem trong Nhật ký.</p>
       <div v-if="!tasksReady" class="py-6 text-center text-gray-400">Đang tải...</div>
       <div v-else-if="isRest" class="rounded-xl border border-dashed border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 p-6 text-center text-sky-800 dark:text-sky-200">
         Đang nghỉ. Nhiệm vụ chính sẽ quay lại vào ngày không nghỉ tiếp theo.
@@ -465,14 +461,18 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
         Hôm nay không có nhiệm vụ chính.
         <NuxtLink v-if="can('edit')" to="/settings" class="block pt-1 text-primary hover:underline">Thêm trong Cài đặt</NuxtLink>
       </div>
+      <div v-else-if="allDone" class="rounded-xl border border-dashed border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40 p-6 text-center text-green-800 dark:text-green-200">
+        Đã xong hết nhiệm vụ chính hôm nay.
+        <NuxtLink to="/journal" class="block pt-1 text-primary hover:underline">Xem lại trong Nhật ký</NuxtLink>
+      </div>
       <div v-else class="flex flex-col gap-2">
-        <template v-for="group in mainGroups" :key="group.key">
+        <template v-for="group in mainPendingGroups" :key="group.key">
           <PeriodHeader
             v-if="showPeriodHeader(mainGroups)"
             :label="group.label"
             :icon="group.icon"
-            :done="group.items.filter((t) => isCompleted(t.id)).length"
-            :total="group.items.length"
+            :done="group.done"
+            :total="group.total"
             :current="group.key === currentPeriod"
           />
           <MainTaskRow
@@ -484,7 +484,6 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
             :can-act="canTickMain"
             :ticked-by="tickedBy(task.id)"
             @complete="onCompleteRequest(task)"
-            @uncomplete="onUncomplete(task)"
             @proof-files="(files) => openProof(task, files)"
           />
         </template>
@@ -497,13 +496,13 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
     <section>
       <p class="mb-2 text-xs text-gray-400">Vuốt từ trái sang để sửa, từ phải sang để xóa.</p>
       <div class="flex flex-col gap-2">
-        <template v-for="group in sideGroups" :key="group.key">
+        <template v-for="group in sidePendingGroups" :key="group.key">
           <PeriodHeader
             v-if="showPeriodHeader(sideGroups)"
             :label="group.label"
             :icon="group.icon"
-            :done="group.items.filter((t) => t.doneDate !== null).length"
-            :total="group.items.length"
+            :done="group.done"
+            :total="group.total"
             :current="group.key === currentPeriod"
           />
           <SideTaskRow
@@ -513,7 +512,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
             :today="today"
             :can-act="can('add')"
             :can-edit="can('edit') || task.createdBy === user?.uid"
-            @toggle="(done) => onToggleSide(task, done)"
+            @complete="onCompleteSide(task)"
             @edit="openSideEdit(task)"
             @delete="onDeleteSide(task)"
             @proof-files="(files) => openProof(task, files)"
@@ -521,6 +520,10 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
         </template>
         <p v-if="tasksReady && !sideToday.length" class="py-2 text-sm text-gray-400">
           Chưa có nhiệm vụ phụ. Việc chưa xong sẽ tự dồn sang ngày hôm sau.
+        </p>
+        <p v-else-if="tasksReady && !pendingSideCount" class="py-2 text-sm text-gray-400">
+          Đã xong hết việc phụ hôm nay. Xem lại trong
+          <NuxtLink to="/journal" class="text-primary hover:underline">Nhật ký</NuxtLink>.
         </p>
         <SideTaskInput v-if="can('add')" class="mt-1" @add="onAddSide" @options="openSideOptions" />
       </div>

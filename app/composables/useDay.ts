@@ -1,11 +1,9 @@
 import {
-  deleteField,
   doc,
   increment,
   onSnapshot,
   runTransaction,
   setDoc,
-  updateDoc,
   type Unsubscribe,
 } from "firebase/firestore";
 import type { DayDoc, MainTask, Proof, Workspace } from "#shared/utils/models";
@@ -76,13 +74,6 @@ export const useDay = () => {
     );
   };
 
-  /** Bỏ tích (chỉ trong ngày, trước khi chốt) */
-  const uncomplete = async (task: MainTask) => {
-    const ws = workspace.value;
-    if (!ws) return;
-    await updateDoc(dayRef(ws.id, today.value), { [`completions.${task.id}`]: deleteField() });
-  };
-
   /**
    * Chốt các ngày đã qua chưa chốt: đếm nhiệm vụ chính lên lịch mà không có tích,
    * ghi tiền phạt vào days/{date} và cộng dồn vào workspace.penaltyTotal.
@@ -148,5 +139,5 @@ export const useDay = () => {
     await setDoc(dayRef(ws.id, today.value), { date: today.value, chestOpenedAt: Date.now() }, { merge: true });
   };
 
-  return { today, dayDoc, bind, unbind, isCompleted, completionOf, complete, uncomplete, closePastDays, markChestOpened };
+  return { today, dayDoc, bind, unbind, isCompleted, completionOf, complete, closePastDays, markChestOpened };
 };

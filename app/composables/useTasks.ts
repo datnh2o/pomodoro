@@ -216,17 +216,12 @@ export const useTasks = () => {
     });
   };
 
-  /** Tích/bỏ tích nhiệm vụ phụ. Việc cần ảnh phải kèm ít nhất 1 ảnh. */
-  const setSideTaskDone = async (task: SideTask, done: boolean, proofs: Proof[] = [], date: string = todayKey()) => {
-    if (done && task.requiresProof && proofs.length === 0) {
+  /** Tích nhiệm vụ phụ (đã xong là chốt, không bỏ tích). Việc cần ảnh phải kèm ít nhất 1 ảnh. */
+  const completeSideTask = async (task: SideTask, proofs: Proof[] = [], date: string = todayKey()) => {
+    if (task.requiresProof && proofs.length === 0) {
       throw new Error("Nhiệm vụ này cần ít nhất một ảnh chứng minh");
     }
-    await updateDoc(taskRef(task.id), {
-      doneDate: done ? date : null,
-      doneAt: done ? Date.now() : null,
-      doneBy: done ? requireUid() : null,
-      proofs: done ? proofs : [],
-    });
+    await updateDoc(taskRef(task.id), { doneDate: date, doneAt: Date.now(), doneBy: requireUid(), proofs });
   };
 
   const deleteSideTask = async (task: SideTask) => {
@@ -251,7 +246,7 @@ export const useTasks = () => {
     archiveMainTask,
     createSideTask,
     updateSideTask,
-    setSideTaskDone,
+    completeSideTask,
     deleteSideTask,
     deleteTaskById,
   };

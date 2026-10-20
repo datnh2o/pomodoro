@@ -5,7 +5,7 @@ import { currentTimeHHmm } from "#shared/utils/dates";
 const props = defineProps<{
   task: MainTask;
   completion?: Completion;
-  /** Người dùng có quyền tích/bỏ tích không (chỉ chủ sở hữu) */
+  /** Người dùng có quyền tích không (chỉ chủ sở hữu) */
   canAct: boolean;
   /** Ảnh đang chờ tải lên (mất mạng) */
   queued?: boolean;
@@ -13,19 +13,19 @@ const props = defineProps<{
   tickedBy?: string | null;
 }>();
 
-const emit = defineEmits<{ complete: []; uncomplete: []; proofFiles: [files: File[]] }>();
+const emit = defineEmits<{ complete: []; proofFiles: [files: File[]] }>();
 
 const { thumbnailUrl, proofViewUrl } = useProofUpload();
 const { nowHHmm } = useClock();
 const done = computed(() => !!props.completion);
 const overdue = computed(() => !done.value && isPastDeadline(props.task, nowHHmm.value));
-const actionable = computed(() => props.canAct && !overdue.value);
+/** Đã xong là chốt, không bỏ tích */
+const actionable = computed(() => props.canAct && !done.value && !overdue.value);
 
 // Mở camera ngay khi bấm (trong cùng cử chỉ người dùng), bỏ bước bấm thêm trong modal
 const cameraInput = ref<HTMLInputElement | null>(null);
 const primaryAction = () => {
   if (!actionable.value) return;
-  if (done.value) return emit("uncomplete");
   if (props.task.requiresProof) {
     cameraInput.value?.click();
     return;
@@ -43,13 +43,11 @@ const onCameraPick = (event: Event) => {
 
 const formatTime = (ts: number) => currentTimeHHmm(new Date(ts));
 
-/** Vuốt sang trái hay sang phải đều là hành động chính: nộp ảnh / hoàn thành / bỏ tích */
+/** Vuốt sang trái hay sang phải đều là hành động chính: nộp ảnh / hoàn thành */
 const swipeAction = computed(() =>
-  done.value
-    ? { label: "Bỏ tích", icon: "i-lucide-undo-2", class: "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300" }
-    : props.task.requiresProof
-      ? { label: "Nộp ảnh", icon: "i-lucide-camera", class: "bg-green-600 text-white" }
-      : { label: "Hoàn thành", icon: "i-lucide-circle-check", class: "bg-green-600 text-white" }
+  props.task.requiresProof
+    ? { label: "Nộp ảnh", icon: "i-lucide-camera", class: "bg-green-600 text-white" }
+    : { label: "Hoàn thành", icon: "i-lucide-circle-check", class: "bg-green-600 text-white" }
 );
 const onSwipe = () => primaryAction();
 </script>
@@ -66,7 +64,7 @@ const onSwipe = () => primaryAction();
     <button
       type="button"
       :disabled="!actionable"
-      :aria-label="done ? 'Bỏ tích' : overdue ? 'Đã quá hạn' : 'Hoàn thành'"
+      :aria-label="done ? 'Đã hoàn thành' : overdue ? 'Đã quá hạn' : 'Hoàn thành'"
       class="mt-0.5 shrink-0 rounded-full disabled:opacity-50"
       @click="primaryAction"
     >

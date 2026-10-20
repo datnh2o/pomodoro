@@ -145,7 +145,7 @@ const coins = Array.from({ length: 12 }, (_, i) => {
               </p>
             </div>
             <p v-if="amount > 0" class="mt-3 text-[11px] text-amber-50/90">
-              Tiền thưởng vào ví khi chốt ngày lúc 0h. Bỏ tích trước giờ đó sẽ mất thưởng.
+              Tiền thưởng vào ví khi chốt ngày lúc 0h.
             </p>
           </template>
 
