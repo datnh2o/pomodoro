@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { isRestDay, isSidePendingOn, penaltySettingsOn, type MainTask, type Proof, type ReminderTarget, type SideTask } from "#shared/utils/models";
-import type { DayDoc } from "#shared/utils/models";
+import { isRestDay, isSidePendingOn, penaltySettingsOn, type MainTask, type ReminderTarget, type SideTask } from "#shared/utils/models";
 import type { SideTaskInput } from "~/composables/useTasks";
 import type { DayMap } from "~/composables/useHistory";
 import { STREAK_LOOKBACK_DAYS } from "~/composables/useHistory";
@@ -17,34 +16,6 @@ const { showError } = useErrorToast();
 const { check: checkReminders } = useReminders();
 const { fetchDays, currentFullStreak } = useHistory();
 const { tasks } = useTasks();
-const { items: queuedItems, online, enqueue, isQueued, flush: flushQueue } = useProofQueue();
-const toast = useToast();
-
-// Tải ảnh đang chờ khi có mạng lại / khi dữ liệu sẵn sàng
-watch(
-  [online, tasksReady, () => workspace.value?.id, () => queuedItems.value.length],
-  async ([isOnline, isReady, wsId, count]) => {
-    if (!isOnline || !isReady || !wsId || !count) return;
-    try {
-      const done = await flushQueue(tasks.value);
-      if (done) toast.add({ title: `Đã tải ${done} nhiệm vụ chờ ảnh`, color: "success", icon: "i-lucide-cloud-upload" });
-    } catch (error) {
-      console.warn("flush queue", error);
-    }
-  },
-  { immediate: true }
-);
-
-const onQueueProofs = async (files: File[]) => {
-  const task = proofTask.value;
-  if (!task) return;
-  try {
-    await enqueue(task, today.value, files);
-    toast.add({ title: "Đã lưu ảnh, sẽ tải khi có mạng", description: task.title, color: "warning", icon: "i-lucide-wifi-off" });
-  } catch (error) {
-    showError("Không lưu được ảnh", error);
-  }
-};
 
 // Chuỗi ngày hoàn thành đủ nhiệm vụ chính: đọc lịch sử 120 ngày gần nhất một lần, tính lại khi tích
 const streakDays = ref<DayMap>({});
@@ -56,18 +27,6 @@ const fullStreak = computed(() => {
   return currentFullStreak(tasks.value, days, ws.createdDate, today.value, ws.restDays ?? []);
 });
 
-/** etag của mọi ảnh đã nộp (120 ngày gần nhất + hôm nay + việc phụ) → ngày dùng, để chặn nộp lại */
-const knownEtags = computed<Record<string, string>>(() => {
-  const map: Record<string, string> = {};
-  const collect = (day: DayDoc | null | undefined) => {
-    if (!day) return;
-    for (const c of Object.values(day.completions)) for (const p of c.proofs) if (p.etag) map[p.etag] = day.date;
-  };
-  Object.values(streakDays.value).forEach(collect);
-  collect(dayDoc.value);
-  for (const t of tasks.value) if (t.type === "side" && t.doneDate) for (const p of t.proofs ?? []) if (p.etag) map[p.etag] = t.doneDate;
-  return map;
-});
 watch(
   [tasksReady, () => workspace.value?.id, today],
   async ([isReady, wsId, date]) => {
@@ -206,37 +165,10 @@ onMounted(() => {
 });
 onBeforeUnmount(() => clearInterval(reminderClock));
 
-// ---- Hoàn thành (chính và phụ cần ảnh dùng chung modal) ----
-const proofTask = ref<MainTask | SideTask | null>(null);
-const proofOpen = ref(false);
-const proofInitialFiles = ref<File[]>([]);
-
-/** Mở modal ảnh; có `files` (chụp thẳng từ camera) thì tải ngay */
-const openProof = (task: MainTask | SideTask, files: File[] = []) => {
-  proofTask.value = task;
-  proofInitialFiles.value = files;
-  proofOpen.value = true;
-};
-
+// ---- Hoàn thành ----
 const onCompleteRequest = async (task: MainTask) => {
-  if (task.requiresProof) {
-    openProof(task);
-    return;
-  }
   try {
-    await complete(task, []);
-  } catch (error) {
-    showError("Không tích được", error);
-  }
-};
-
-const onProofConfirm = async (proofs: Proof[]) => {
-  const task = proofTask.value;
-  if (!task) return;
-  try {
-    if (task.type === "main") await complete(task, proofs);
-    else await completeSideTask(task, proofs);
-    toast.add({ title: "Đã hoàn thành", description: task.title, color: "success", icon: "i-lucide-circle-check" });
+    await complete(task);
   } catch (error) {
     showError("Không tích được", error);
   }
@@ -272,10 +204,6 @@ const onSaveSide = async (input: Required<SideTaskInput>) => {
   }
 };
 const onCompleteSide = async (task: SideTask) => {
-  if (task.requiresProof) {
-    openProof(task);
-    return;
-  }
   try {
     await completeSideTask(task);
   } catch (error) {
@@ -291,8 +219,6 @@ const onDeleteSide = async (task: SideTask) => {
     showError("Không xóa được", error);
   }
 };
-
-const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value}`);
 </script>
 
 <template>
@@ -396,7 +322,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
 
     <!-- Việc tiếp theo -->
     <section v-if="nextTask" class="flex items-center gap-3 rounded-2xl bg-primary/10 p-4 ring-1 ring-primary/20">
-      <UIcon :name="nextTask.requiresProof ? 'i-lucide-camera' : 'i-lucide-circle'" class="h-6 w-6 shrink-0 text-primary" />
+      <UIcon name="i-lucide-circle" class="h-6 w-6 shrink-0 text-primary" />
       <div class="min-w-0 flex-1">
         <p class="text-xs font-semibold uppercase tracking-wide text-primary">Việc tiếp theo</p>
         <p class="truncate font-bold">{{ nextTask.title }}</p>
@@ -406,9 +332,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
           <template v-else>Trước nửa đêm</template>
         </p>
       </div>
-      <UButton v-if="canTickMain" size="lg" :icon="nextTask.requiresProof ? 'i-lucide-camera' : 'i-lucide-check'" @click="onCompleteRequest(nextTask)">
-        {{ nextTask.requiresProof ? "Nộp ảnh" : "Xong" }}
-      </UButton>
+      <UButton v-if="canTickMain" size="lg" icon="i-lucide-check" @click="onCompleteRequest(nextTask)">Xong</UButton>
     </section>
 
     <!-- Xong hết: chưa mở rương thì mời mở, mở rồi thì chúc mừng -->
@@ -452,7 +376,7 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
     <template #main>
     <!-- Nhiệm vụ chính -->
     <section>
-      <p class="mb-2 text-xs text-gray-400">Vuốt ngang một việc để nộp ảnh / hoàn thành. Quá hạn giờ là không tích được nữa. Việc đã xong xem trong Nhật ký.</p>
+      <p class="mb-2 text-xs text-gray-400">Vuốt ngang một việc để hoàn thành. Quá hạn giờ là không tích được nữa. Việc đã xong xem trong Nhật ký.</p>
       <div v-if="!tasksReady" class="py-6 text-center text-gray-400">Đang tải...</div>
       <div v-else-if="isRest" class="rounded-xl border border-dashed border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 p-6 text-center text-sky-800 dark:text-sky-200">
         Đang nghỉ. Nhiệm vụ chính sẽ quay lại vào ngày không nghỉ tiếp theo.
@@ -480,11 +404,9 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
             :key="task.id"
             :task="task"
             :completion="completionOf(task.id)"
-            :queued="isQueued(task.id, today)"
             :can-act="canTickMain"
             :ticked-by="tickedBy(task.id)"
             @complete="onCompleteRequest(task)"
-            @proof-files="(files) => openProof(task, files)"
           />
         </template>
       </div>
@@ -515,7 +437,6 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
             @complete="onCompleteSide(task)"
             @edit="openSideEdit(task)"
             @delete="onDeleteSide(task)"
-            @proof-files="(files) => openProof(task, files)"
           />
         </template>
         <p v-if="tasksReady && !sideToday.length" class="py-2 text-sm text-gray-400">
@@ -531,15 +452,6 @@ const proofFolder = computed(() => `${workspace.value?.id ?? "ws"}/${today.value
     </template>
     </UTabs>
 
-    <ProofUploadModal
-      v-model:open="proofOpen"
-      :task="proofTask"
-      :folder="proofFolder"
-      :initial-files="proofInitialFiles"
-      :known-etags="knownEtags"
-      @confirm="onProofConfirm"
-      @queue="onQueueProofs"
-    />
     <SideTaskForm v-model:open="sideFormOpen" :task="sideEditing" :initial-title="sideInitialTitle" @save="onSaveSide" />
   </div>
 </template>

@@ -8,7 +8,6 @@ const { workspace } = useWorkspace();
 const { tasks, ready: tasksReady } = useTasks();
 const { dayDoc } = useDay();
 const { fetchDays, computeStats } = useHistory();
-const { thumbnailUrl } = useProofUpload();
 const { showError } = useErrorToast();
 
 const today = computed(() => todayKey());
@@ -94,7 +93,6 @@ const selectedSummary = computed(() => stats.value?.days[selected.value]);
 interface DetailRow {
   task: MainTask;
   done: boolean;
-  proofs: { url: string; publicId: string }[];
 }
 const selectedIsRest = computed(() => isRestDay(workspace.value?.restDays, selected.value));
 /** Giờ "đến lượt" để sắp xếp và chia buổi, giống màn Hôm nay */
@@ -106,7 +104,7 @@ const selectedMain = computed<DetailRow[]>(() =>
     .sort((a, b) => slotKey(a).localeCompare(slotKey(b)) || a.order - b.order)
     .map((task) => {
       const completion = selectedDay.value?.completions[task.id];
-      return { task, done: !!completion, proofs: completion?.proofs ?? [] };
+      return { task, done: !!completion };
     })
 );
 const selectedSide = computed(() =>
@@ -216,11 +214,6 @@ const showPeriodHeader = computed(() => selectedGroups.value.length > 1 || selec
               <span v-if="slotTimeOf(row.task)" class="text-xs text-gray-400">{{ slotTimeOf(row.task) }}</span>
               <span class="ml-auto text-xs text-gray-400">{{ row.done ? "Đã làm" : selected < today ? "Bỏ lỡ" : "Chưa làm" }}</span>
             </div>
-            <div v-if="row.proofs.length" class="mt-2 flex flex-wrap gap-1.5">
-              <a v-for="proof in row.proofs" :key="proof.publicId" :href="proof.url" target="_blank" rel="noopener" class="block h-16 w-16 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
-                <img :src="thumbnailUrl(proof.url, 128)" alt="Ảnh chứng minh" class="h-full w-full object-cover" loading="lazy" />
-              </a>
-            </div>
           </li>
           <li v-for="task in group.side" :key="task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 text-sm shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
             <div class="flex items-center gap-2">
@@ -228,11 +221,6 @@ const showPeriodHeader = computed(() => selectedGroups.value.length > 1 || selec
               <span>{{ task.title }}</span>
               <span v-if="slotTimeOf(task)" class="text-xs text-gray-400">{{ slotTimeOf(task) }}</span>
               <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">Phụ</UBadge>
-            </div>
-            <div v-if="task.proofs?.length" class="mt-2 flex flex-wrap gap-1.5">
-              <a v-for="proof in task.proofs" :key="proof.publicId" :href="proof.url" target="_blank" rel="noopener" class="block h-16 w-16 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
-                <img :src="thumbnailUrl(proof.url, 128)" alt="Ảnh chứng minh" class="h-full w-full object-cover" loading="lazy" />
-              </a>
             </div>
           </li>
           </ul>

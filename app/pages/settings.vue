@@ -22,6 +22,7 @@ const push = usePush();
 const { resetPassword } = useAuth();
 const { updateEveningReminder, addRestDay, removeRestDay, restDaysInMonth, updateSettings } = useWorkspace();
 const { confirmAction } = useConfirm();
+const { restartFromToday } = useRestart();
 
 // ---- Kỷ luật & nhắc nhở (owner) ----
 const discipline = reactive({
@@ -83,6 +84,29 @@ const tabItems = computed(() => [
   { label: "Thông báo", value: "notifications", slot: "notifications" as const, icon: "i-lucide-bell" },
   { label: "Tài khoản", value: "account", slot: "account" as const, icon: "i-lucide-user" },
 ]);
+
+// ---- Bắt đầu lại từ hôm nay (owner) ----
+const restarting = ref(false);
+const onRestart = async () => {
+  const ok = await confirmAction({
+    title: "Bắt đầu lại từ hôm nay?",
+    description:
+      "Ngày bắt đầu tính thành hôm nay; mọi nhiệm vụ chính có hiệu lực từ hôm nay; tổng nợ, tiền thưởng, số rương và chuỗi về 0. Lịch sử các ngày trước không còn hiện trong Nhật ký và Tổng hợp. Không hoàn tác được.",
+    confirmLabel: "Bắt đầu lại",
+    color: "error",
+    icon: "i-lucide-rotate-ccw",
+  });
+  if (!ok) return;
+  restarting.value = true;
+  try {
+    await restartFromToday();
+    toast.add({ title: "Đã bắt đầu lại từ hôm nay", description: formatDateVi(today.value), color: "success", icon: "i-lucide-rotate-ccw" });
+  } catch (error) {
+    showError("Không bắt đầu lại được", error);
+  } finally {
+    restarting.value = false;
+  }
+};
 
 // ---- Chế độ nghỉ ----
 const restInput = ref("");
@@ -372,7 +396,6 @@ const onChangePassword = async () => {
             <p class="font-semibold">{{ task.title }}</p>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ weekdaysLabel(task) }}</p>
             <div class="mt-1 flex flex-wrap gap-1.5">
-              <UBadge v-if="task.requiresProof" color="neutral" variant="subtle" size="sm" icon="i-lucide-camera">Cần ảnh</UBadge>
               <UBadge v-if="task.reminderTime" color="warning" variant="subtle" size="sm" icon="i-lucide-bell">{{ task.reminderTime }}</UBadge>
               <UBadge v-if="task.effectiveFrom > today" color="info" variant="subtle" size="sm">Từ {{ formatShortVi(task.effectiveFrom) }}</UBadge>
               <UBadge v-if="task.endsOn" color="error" variant="subtle" size="sm">Ngừng từ {{ formatShortVi(task.endsOn) }}</UBadge>
@@ -462,6 +485,17 @@ const onChangePassword = async () => {
           <UButton type="submit" color="neutral" variant="outline">Lưu</UButton>
         </div>
       </form>
+    </section>
+
+    <!-- Bắt đầu lại (owner) -->
+    <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
+      <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bắt đầu lại</h2>
+      <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+        Đặt ngày bắt đầu tính là hôm nay ({{ formatShortVi(today) }}): chuỗi, tổng nợ, tiền thưởng và số rương đếm lại từ đầu, các
+        ngày trước không còn tính. Nhiệm vụ chính giữ nguyên, chỉ đổi ngày có hiệu lực.
+      </p>
+      <p v-if="workspace?.createdDate" class="mb-3 text-xs text-gray-500 dark:text-gray-400">Đang tính từ {{ formatDateVi(workspace.createdDate) }}.</p>
+      <UButton color="error" variant="outline" icon="i-lucide-rotate-ccw" :loading="restarting" @click="onRestart">Bắt đầu lại từ hôm nay</UButton>
     </section>
 
     <!-- Chế độ nghỉ (owner) -->

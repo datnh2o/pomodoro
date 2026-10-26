@@ -6,7 +6,7 @@ import {
   setDoc,
   type Unsubscribe,
 } from "firebase/firestore";
-import type { DayDoc, MainTask, Proof, Workspace } from "#shared/utils/models";
+import type { DayDoc, MainTask, Workspace } from "#shared/utils/models";
 import { nextDayToClose, planDayClose } from "#shared/utils/penalty";
 import { todayKey, yesterdayKey } from "#shared/utils/dates";
 
@@ -18,7 +18,7 @@ const emptyDay = (date: string): DayDoc => ({
   penalty: 0,
 });
 
-/** Kết quả của ngày hôm nay (tích, ảnh) và việc chốt các ngày đã qua. */
+/** Kết quả của ngày hôm nay (các lần tích) và việc chốt các ngày đã qua. */
 export const useDay = () => {
   const { $firebase } = useNuxtApp();
   const { user } = useAuth();
@@ -53,25 +53,13 @@ export const useDay = () => {
   const isCompleted = (taskId: string) => !!dayDoc.value?.completions[taskId];
   const completionOf = (taskId: string) => dayDoc.value?.completions[taskId];
 
-  /**
-   * Tích hoàn thành nhiệm vụ chính (mặc định hôm nay). Nhiệm vụ yêu cầu ảnh phải có ít nhất 1 ảnh.
-   * `date` khác hôm nay chỉ dùng cho ảnh xếp hàng lúc mất mạng; ngày đã chốt thì tiền phạt không hoàn tác.
-   */
-  const complete = async (task: MainTask, proofs: Proof[], date: string = today.value) => {
-    if (task.requiresProof && proofs.length === 0) {
-      throw new Error("Nhiệm vụ này cần ít nhất một ảnh chứng minh");
-    }
+  /** Tích hoàn thành nhiệm vụ chính của hôm nay */
+  const complete = async (task: MainTask) => {
     const ws = workspace.value;
     const uid = user.value?.uid;
     if (!ws || !uid) throw new Error("User is not authenticated");
-    await setDoc(
-      dayRef(ws.id, date),
-      {
-        date,
-        completions: { [task.id]: { at: Date.now(), byUid: uid, proofs } },
-      },
-      { merge: true }
-    );
+    const date = today.value;
+    await setDoc(dayRef(ws.id, date), { date, completions: { [task.id]: { at: Date.now(), byUid: uid } } }, { merge: true });
   };
 
   /**

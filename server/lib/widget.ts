@@ -24,7 +24,6 @@ export interface WidgetTask {
   time: string | null;
   /** Hạn trong ngày, null = tới hết ngày */
   deadline: string | null;
-  requiresProof: boolean;
 }
 
 export interface WidgetData {
@@ -68,7 +67,6 @@ export const buildWidgetData = (
     done,
     time: task.reminderTime,
     deadline: task.deadlineTime ?? null,
-    requiresProof: task.requiresProof,
   }));
   const done = tasks.filter((t) => t.done).length;
   const allDone = tasks.length > 0 && done === tasks.length;

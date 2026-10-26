@@ -171,7 +171,7 @@ function taskList(parent, d, max, size) {
   const shown = d.tasks.slice(0, max);
   for (const task of shown) {
     const r = row(parent);
-    symbol(r, task.done ? "checkmark.circle.fill" : task.requiresProof ? "camera.circle" : "circle", size + 1, task.done ? C.done : C.muted);
+    symbol(r, task.done ? "checkmark.circle.fill" : "circle", size + 1, task.done ? C.done : C.muted);
     r.addSpacer(5);
     text(r, task.title, size, task.done ? C.muted : C.text, task.done ? undefined : "semibold");
     r.addSpacer();

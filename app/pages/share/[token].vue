@@ -14,10 +14,8 @@ interface ShareData {
   todayMain: Array<{
     id: string;
     title: string;
-    requiresProof: boolean;
     reminderTime: string | null;
     done: boolean;
-    proofs: string[];
   }>;
   perTask: Array<{ lineageId: string; title: string; completed: number; scheduled: number; missed: number }>;
   streak: number;
@@ -25,7 +23,6 @@ interface ShareData {
 
 const route = useRoute();
 const token = computed(() => String(route.params.token ?? ""));
-const { thumbnailUrl } = useProofUpload();
 
 const { data, error, pending, refresh } = await useFetch<ShareData>(() => `/api/share/${token.value}`, {
   server: false,
@@ -96,11 +93,6 @@ const rate = computed(() => {
               <div class="flex items-center gap-2">
                 <UIcon :name="task.done ? 'i-lucide-circle-check' : 'i-lucide-circle'" :class="['h-5 w-5 shrink-0', task.done ? 'text-green-600' : 'text-gray-400']" />
                 <span :class="['font-medium', task.done && 'text-gray-500 dark:text-gray-400 line-through']">{{ task.title }}</span>
-              </div>
-              <div v-if="task.proofs.length" class="mt-2 flex flex-wrap gap-1.5">
-                <a v-for="url in task.proofs" :key="url" :href="url" target="_blank" rel="noopener" class="block h-14 w-14 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
-                  <img :src="thumbnailUrl(url, 112)" alt="Ảnh chứng minh" class="h-full w-full object-cover" loading="lazy" />
-                </a>
               </div>
             </li>
           </ul>

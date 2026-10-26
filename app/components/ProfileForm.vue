@@ -6,7 +6,7 @@ const emit = defineEmits<{ saved: [] }>();
 
 const { user, usesPassword, updateDisplayName, updatePhotoURL, changeEmail, refreshUser } = useAuth();
 const { updateOwnMemberInfo } = useWorkspace();
-const { upload, isConfigured, thumbnailUrl } = useProofUpload();
+const { upload, isConfigured, thumbnailUrl } = useImageUpload();
 const { showError } = useErrorToast();
 const toast = useToast();
 
@@ -61,8 +61,8 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
   try {
     if (avatarFile.value) {
       if (!isConfigured.value) throw new Error("Chưa cấu hình Cloudinary để lưu ảnh đại diện.");
-      const proof = await upload(avatarFile.value, `avatars/${uid}`);
-      await updatePhotoURL(thumbnailUrl(proof.url, 256));
+      const image = await upload(avatarFile.value, `avatars/${uid}`);
+      await updatePhotoURL(thumbnailUrl(image.url, 256));
     }
     if (event.data.displayName.trim() !== (user.value?.displayName ?? "")) {
       await updateDisplayName(event.data.displayName);

@@ -49,10 +49,8 @@ export default defineEventHandler(async (event) => {
       return {
         id: t.id,
         title: t.title,
-        requiresProof: t.requiresProof,
         reminderTime: t.reminderTime,
         done: !!completion,
-        proofs: completion?.proofs.map((p) => p.url) ?? [],
       };
     });
 

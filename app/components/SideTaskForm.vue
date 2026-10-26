@@ -15,19 +15,18 @@ const emit = defineEmits<{ save: [input: Required<SideTaskInput>] }>();
 interface FormState {
   title: string;
   note: string;
-  requiresProof: boolean;
   reminderTime: string;
 }
 
-const state = reactive<FormState>({ title: "", note: "", requiresProof: false, reminderTime: "" });
+const state = reactive<FormState>({ title: "", note: "", reminderTime: "" });
 const saving = ref(false);
 
 watch(open, (value) => {
   if (!value) return;
   const t = props.task;
   Object.assign(state, t
-    ? { title: t.title, note: t.note, requiresProof: t.requiresProof, reminderTime: t.reminderTime ?? "" }
-    : { title: props.initialTitle ?? "", note: "", requiresProof: false, reminderTime: "" });
+    ? { title: t.title, note: t.note, reminderTime: t.reminderTime ?? "" }
+    : { title: props.initialTitle ?? "", note: "", reminderTime: "" });
 });
 
 const validate = (data: FormState): FormError[] =>
@@ -39,7 +38,6 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
     emit("save", {
       title: event.data.title.trim(),
       note: event.data.note.trim(),
-      requiresProof: event.data.requiresProof,
       reminderTime: event.data.reminderTime || null,
     });
     open.value = false;
@@ -58,9 +56,6 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
         </UFormField>
         <UFormField name="note" label="Ghi chú">
           <UTextarea v-model="state.note" :rows="2" placeholder="Tùy chọn" maxlength="300" class="w-full" />
-        </UFormField>
-        <UFormField name="requiresProof">
-          <USwitch v-model="state.requiresProof" label="Cần ảnh chứng minh khi hoàn thành" />
         </UFormField>
         <UFormField name="reminderTime" label="Giờ nhắc" description="Nhắc mỗi ngày vào giờ này cho tới khi xong">
           <UInput v-model="state.reminderTime" type="time" class="w-36" />

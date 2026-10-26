@@ -16,7 +16,6 @@ import {
   isSideTask,
   normalizeTask,
   type MainTask,
-  type Proof,
   type SideTask,
   type Task,
 } from "#shared/utils/models";
@@ -25,7 +24,6 @@ import { todayKey, tomorrowKey } from "#shared/utils/dates";
 export interface MainTaskInput {
   title: string;
   note: string;
-  requiresProof: boolean;
   weekdays: number[];
   reminderTime: string | null;
   /** Hạn hoàn thành trong ngày (HH:mm), null = tới hết ngày */
@@ -35,7 +33,6 @@ export interface MainTaskInput {
 export interface SideTaskInput {
   title: string;
   note?: string;
-  requiresProof?: boolean;
   reminderTime?: string | null;
 }
 
@@ -140,7 +137,7 @@ export const useTasks = () => {
   };
 
   /**
-   * Sửa nhiệm vụ chính. Đổi lịch (thứ lặp lại) hoặc yêu cầu ảnh chỉ có hiệu lực từ ngày mai:
+   * Sửa nhiệm vụ chính. Đổi lịch (thứ lặp lại) hoặc hạn giờ chỉ có hiệu lực từ ngày mai:
    * đóng bản cũ (endsOn = ngày mai) và tạo bản mới, để không "sửa cho khỏi bị phạt" hôm nay.
    * Tên, ghi chú, giờ nhắc thì sửa tại chỗ. Trả về true nếu đã tạo bản mới.
    */
@@ -148,11 +145,8 @@ export const useTasks = () => {
     const sameWeekdays =
       task.weekdays.length === input.weekdays.length &&
       task.weekdays.every((d) => input.weekdays.includes(d));
-    // Đổi lịch, yêu cầu ảnh hay hạn giờ đều chỉ có hiệu lực từ ngày mai (không nới hạn cho hôm nay)
-    const scheduleChanged =
-      !sameWeekdays ||
-      task.requiresProof !== input.requiresProof ||
-      (task.deadlineTime ?? null) !== (input.deadlineTime ?? null);
+    // Đổi lịch hay hạn giờ đều chỉ có hiệu lực từ ngày mai (không nới hạn cho hôm nay)
+    const scheduleChanged = !sameWeekdays || (task.deadlineTime ?? null) !== (input.deadlineTime ?? null);
     const notEffectiveYet = task.effectiveFrom > todayKey();
 
     if (!scheduleChanged || notEffectiveYet) {
@@ -193,13 +187,11 @@ export const useTasks = () => {
       type: "side",
       title: input.title.trim(),
       note: input.note?.trim() ?? "",
-      requiresProof: input.requiresProof ?? false,
       reminderTime: input.reminderTime || null,
       createdDate: todayKey(),
       doneDate: null,
       doneAt: null,
       doneBy: null,
-      proofs: [],
       createdBy: requireUid(),
       createdAt: Date.now(),
     };
@@ -211,17 +203,13 @@ export const useTasks = () => {
     await updateDoc(taskRef(task.id), {
       title: input.title.trim(),
       note: input.note?.trim() ?? "",
-      requiresProof: input.requiresProof ?? false,
       reminderTime: input.reminderTime || null,
     });
   };
 
-  /** Tích nhiệm vụ phụ (đã xong là chốt, không bỏ tích). Việc cần ảnh phải kèm ít nhất 1 ảnh. */
-  const completeSideTask = async (task: SideTask, proofs: Proof[] = [], date: string = todayKey()) => {
-    if (task.requiresProof && proofs.length === 0) {
-      throw new Error("Nhiệm vụ này cần ít nhất một ảnh chứng minh");
-    }
-    await updateDoc(taskRef(task.id), { doneDate: date, doneAt: Date.now(), doneBy: requireUid(), proofs });
+  /** Tích nhiệm vụ phụ (đã xong là chốt, không bỏ tích) */
+  const completeSideTask = async (task: SideTask) => {
+    await updateDoc(taskRef(task.id), { doneDate: todayKey(), doneAt: Date.now(), doneBy: requireUid() });
   };
 
   const deleteSideTask = async (task: SideTask) => {

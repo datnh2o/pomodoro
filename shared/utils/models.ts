@@ -131,18 +131,9 @@ export interface PushSubscriptionDoc {
   createdAt: number;
 }
 
-export interface Proof {
-  url: string;
-  publicId: string;
-  takenAt: number;
-  /** MD5 từ Cloudinary, để phát hiện nộp lại ảnh cũ */
-  etag?: string;
-}
-
 export interface Completion {
   at: number;
   byUid: string;
-  proofs: Proof[];
 }
 
 export interface DayDoc {
@@ -167,7 +158,6 @@ export interface MainTask {
   type: "main";
   title: string;
   note: string;
-  requiresProof: boolean;
   /** Các thứ lặp lại: 0 = CN ... 6 = T7 */
   weekdays: number[];
   /** Giờ nhắc HH:mm, null nếu không nhắc */
@@ -190,8 +180,6 @@ export interface SideTask {
   type: "side";
   title: string;
   note: string;
-  /** Cần ảnh chứng minh khi tích (không liên quan tiền phạt) */
-  requiresProof: boolean;
   /** Giờ nhắc HH:mm, nhắc mỗi ngày cho tới khi xong */
   reminderTime: string | null;
   /** Ngày tạo; chưa xong thì tự hiện lại các ngày sau */
@@ -199,7 +187,6 @@ export interface SideTask {
   doneDate: string | null;
   doneAt: number | null;
   doneBy?: string | null;
-  proofs?: Proof[];
   createdBy: string;
   createdAt: number;
   /** Server đã gửi nhắc đẩy "được giao việc" cho các thành viên khác (null = chưa) */
@@ -209,32 +196,25 @@ export interface SideTask {
 /** Nhiệm vụ phụ mới tạo trong vòng N phút được coi là "vừa được giao" */
 export const ASSIGN_NOTIFY_WINDOW_MS = 10 * 60_000;
 
-/** Điền mặc định cho tài liệu nhiệm vụ phụ cũ (trước khi có ảnh/giờ nhắc) */
+/** Điền mặc định cho tài liệu nhiệm vụ phụ cũ (trước khi có ghi chú/giờ nhắc) */
 export const normalizeTask = (task: Task): Task => {
   if (task.type !== "side") return task;
   const raw = task as Partial<SideTask> & { id: string; type: "side" };
-  return {
-    ...task,
-    note: raw.note ?? "",
-    requiresProof: raw.requiresProof ?? false,
-    reminderTime: raw.reminderTime ?? null,
-    proofs: raw.proofs ?? [],
-  };
+  return { ...task, note: raw.note ?? "", reminderTime: raw.reminderTime ?? null };
 };
 
 /** Một việc có thể nhắc giờ: nhiệm vụ chính hoặc phụ */
 export interface ReminderTarget {
   id: string;
   title: string;
-  requiresProof: boolean;
   reminderTime: string | null;
 }
 
-/** Nhiệm vụ phụ còn hiện trong ngày `date` (chưa xong, tạo từ ngày đó trở về trước) */
 /** Giờ "đến lượt" của một việc (xếp thứ tự, chia buổi): giờ nhắc (lúc định làm), không có thì hạn giờ */
 export const slotTimeOf = (task: MainTask | SideTask): string | null =>
   task.reminderTime || (task.type === "main" ? task.deadlineTime || null : null);
 
+/** Nhiệm vụ phụ còn hiện trong ngày `date` (chưa xong, tạo từ ngày đó trở về trước) */
 export const isSidePendingOn = (task: SideTask, date: string): boolean =>
   task.doneDate === null && task.createdDate <= date;
 

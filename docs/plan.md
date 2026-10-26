@@ -11,7 +11,7 @@ Stack giữ nguyên: Nuxt 4 + Nuxt UI 4 + Firebase (Auth, Firestore).
 | Workspace | Một "bảng" nhiệm vụ. Mỗi người có 1 workspace của mình; có thể mời tài khoản con vào với quyền xem / thêm / sửa. |
 | Nhiệm vụ chính | Lặp theo các thứ trong tuần cấu hình sẵn (có thể gồm T7, CN). Bỏ lỡ bị phạt. Có thể yêu cầu ảnh, có thể có giờ nhắc. |
 | Nhiệm vụ phụ | Thêm tay hoặc bằng giọng nói. Không phạt. Có cùng tùy chọn như nhiệm vụ chính: ghi chú, cần ảnh chứng minh, giờ nhắc (nhắc mỗi ngày tới khi xong). Chưa xong thì tự hiện lại ngày hôm sau cho tới khi xong (dồn mãi). |
-| Hoàn thành | Ghi nhận theo ngày. Nếu nhiệm vụ yêu cầu ảnh thì phải có ít nhất 1 ảnh mới được tính. |
+| Hoàn thành | Ghi nhận theo ngày (chỉ chủ sở hữu tích nhiệm vụ chính). Đã xong là chốt, không bỏ tích. |
 | Chốt ngày | 00:00 giờ Việt Nam, không ân hạn. Khi chốt: đếm nhiệm vụ chính của ngày chưa xong × 10k → ghi vào sổ phạt. |
 | Sổ phạt | Chỉ cần tổng nợ, cộng dồn từ các ngày đã chốt. |
 
@@ -143,6 +143,13 @@ lên lịch nhiệm vụ chính, không phạt, không đứt streak, không g�
   riêng từng nhiệm vụ. Ngày nghỉ / không có việc bỏ qua; hôm nay chưa xong chưa tính là đứt.
 - Rules: thành viên có quyền `add` được ghi thêm `rewardTotal`, `rewardDays` khi chốt ngày, nhưng không ghi
   được `chestOpenedAt`.
+
+### Bỏ ảnh chứng minh & bắt đầu lại (2026-10-26)
+- Gỡ toàn bộ ảnh chứng minh: không còn `requiresProof`, `proofs`, modal nộp ảnh, hàng đợi ảnh ngoại tuyến,
+  chặn nộp lại ảnh. Tích là xong. Cloudinary chỉ còn dùng cho ảnh đại diện (`useImageUpload`).
+- Cài đặt > Kỷ luật > "Bắt đầu lại từ hôm nay" (`useRestart`): `createdDate` = hôm nay, `lastClosedDate` = null,
+  ví/rương/chuỗi lỡ về 0, nhiệm vụ chính `effectiveFrom` = hôm nay. `computeStats` bỏ qua mọi ngày trước
+  `earliest` (kể cả tiền đã chốt) nên không cần xóa `days` cũ.
 
 ### Widget màn hình chính qua Scriptable (2026-10-19)
 - iOS chưa cho PWA có widget, nên dùng app Scriptable (miễn phí). Cài đặt > Thông báo > "Sao chép script"

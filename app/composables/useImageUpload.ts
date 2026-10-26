@@ -1,11 +1,13 @@
-import type { Proof } from "#shared/utils/models";
-import { formatStampVi } from "#shared/utils/dates";
-
 const MAX_EDGE = 1600;
 const JPEG_QUALITY = 0.85;
 
-/** Tải ảnh chứng minh lên Cloudinary bằng unsigned upload preset (không cần server). */
-export const useProofUpload = () => {
+export interface UploadedImage {
+  url: string;
+  publicId: string;
+}
+
+/** Tải ảnh (hiện chỉ dùng cho ảnh đại diện) lên Cloudinary bằng unsigned upload preset, không cần server. */
+export const useImageUpload = () => {
   const config = useRuntimeConfig().public.cloudinary;
 
   const isConfigured = computed(() => !!config.cloudName && !!config.uploadPreset);
@@ -29,14 +31,14 @@ export const useProofUpload = () => {
     }
   };
 
-  const upload = async (file: File, subfolder: string): Promise<Proof> => {
+  const upload = async (file: File, subfolder: string): Promise<UploadedImage> => {
     if (!isConfigured.value) {
       throw new Error(
         "Chưa cấu hình Cloudinary. Điền NUXT_PUBLIC_CLOUDINARY_CLOUD_NAME và NUXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET."
       );
     }
     const body = new FormData();
-    body.append("file", await compress(file), "proof.jpg");
+    body.append("file", await compress(file), "image.jpg");
     body.append("upload_preset", config.uploadPreset);
     body.append("folder", `${config.folder}/${subfolder}`);
 
@@ -48,22 +50,13 @@ export const useProofUpload = () => {
       const detail = await response.json().catch(() => null);
       throw new Error(detail?.error?.message ?? `Tải ảnh thất bại (HTTP ${response.status})`);
     }
-    const data = (await response.json()) as { secure_url: string; public_id: string; etag?: string };
-    return { url: data.secure_url, publicId: data.public_id, takenAt: Date.now(), etag: data.etag };
+    const data = (await response.json()) as { secure_url: string; public_id: string };
+    return { url: data.secure_url, publicId: data.public_id };
   };
 
   /** URL ảnh thu nhỏ vuông qua transformation của Cloudinary */
   const thumbnailUrl = (url: string, size = 160) =>
     url.replace("/upload/", `/upload/c_fill,w_${size},h_${size},q_auto,f_auto/`);
 
-  /** URL xem ảnh đầy đủ có đóng dấu giờ chụp ở góc (overlay của Cloudinary, không sửa ảnh gốc) */
-  const proofViewUrl = (proof: Proof) => {
-    // Giờ VN như mọi mốc ngày trong app, kể cả khi máy đặt múi giờ khác
-    const stamp = formatStampVi(proof.takenAt);
-    // Cloudinary yêu cầu mã hóa hai lần các ký tự đặc biệt trong text overlay
-    const text = encodeURIComponent(encodeURIComponent(stamp));
-    return proof.url.replace("/upload/", `/upload/q_auto,f_auto/l_text:Arial_36_bold:${text},co_white,bo_6px_solid_rgb:00000080,b_rgb:00000080,g_south_east,x_16,y_16/`);
-  };
-
-  return { isConfigured, upload, thumbnailUrl, proofViewUrl };
+  return { isConfigured, upload, thumbnailUrl };
 };

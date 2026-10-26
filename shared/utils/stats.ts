@@ -19,7 +19,6 @@ export interface DaySummary {
 export interface LineageStats {
   lineageId: string;
   title: string;
-  requiresProof: boolean;
   scheduled: number;
   completed: number;
   missed: number;
@@ -149,6 +148,11 @@ export const computeStats = (input: {
     let scheduled = 0;
     let completed = 0;
 
+    // Trước ngày bắt đầu tính (vd. đã "bắt đầu lại từ hôm nay"): bỏ qua cả nhiệm vụ lẫn tiền đã chốt
+    if (date < input.earliest) {
+      summaries[date] = { date, status: "none", scheduled: 0, completed: 0, penalty: 0, reward: 0 };
+      continue;
+    }
     // Ngày nghỉ: không tính nhiệm vụ, không đứt chuỗi
     if (restDays.includes(date)) {
       summaries[date] = { date, status: date > today ? "future" : "rest", scheduled: 0, completed: 0, penalty: 0, reward: 0 };
@@ -208,7 +212,6 @@ export const computeStats = (input: {
     perTask.push({
       lineageId: id,
       title: latest.title,
-      requiresProof: latest.requiresProof,
       scheduled: acc.scheduled,
       completed: acc.completed,
       missed: acc.scheduled - acc.completed,

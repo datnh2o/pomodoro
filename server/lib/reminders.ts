@@ -304,7 +304,7 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
           messages.push({
             key,
             title: `Đến giờ: ${task.title}`,
-            body: task.requiresProof ? "Đi làm thôi, nhớ chụp ảnh chứng minh khi xong." : "Đi làm thôi!",
+            body: "Đi làm thôi!",
             tag: `task-${task.id}`,
           });
         }

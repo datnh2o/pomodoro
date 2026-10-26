@@ -11,7 +11,6 @@ const emit = defineEmits<{ save: [input: MainTaskInput] }>();
 interface FormState {
   title: string;
   note: string;
-  requiresProof: boolean;
   weekdays: number[];
   reminderTime: string;
   deadlineTime: string;
@@ -20,7 +19,6 @@ interface FormState {
 const blank = (): FormState => ({
   title: "",
   note: "",
-  requiresProof: true,
   weekdays: [...ALL_WEEKDAYS],
   reminderTime: "",
   deadlineTime: "",
@@ -33,7 +31,7 @@ watch(open, (value) => {
   if (!value) return;
   const t = props.task;
   Object.assign(state, t
-    ? { title: t.title, note: t.note, requiresProof: t.requiresProof, weekdays: [...t.weekdays], reminderTime: t.reminderTime ?? "", deadlineTime: t.deadlineTime ?? "" }
+    ? { title: t.title, note: t.note, weekdays: [...t.weekdays], reminderTime: t.reminderTime ?? "", deadlineTime: t.deadlineTime ?? "" }
     : blank());
 });
 
@@ -55,7 +53,7 @@ const scheduleChanged = computed(() => {
   const t = props.task;
   if (!t) return false;
   const same = t.weekdays.length === state.weekdays.length && t.weekdays.every((d) => state.weekdays.includes(d));
-  return !same || t.requiresProof !== state.requiresProof || (t.deadlineTime ?? "") !== state.deadlineTime;
+  return !same || (t.deadlineTime ?? "") !== state.deadlineTime;
 });
 
 const validate = (data: FormState): FormError[] => {
@@ -71,7 +69,6 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
     emit("save", {
       title: event.data.title.trim(),
       note: event.data.note.trim(),
-      requiresProof: event.data.requiresProof,
       weekdays: [...event.data.weekdays].sort((a, b) => a - b),
       reminderTime: event.data.reminderTime || null,
       deadlineTime: event.data.deadlineTime || null,
@@ -127,10 +124,6 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
           </div>
         </UFormField>
 
-        <UFormField name="requiresProof">
-          <USwitch v-model="state.requiresProof" label="Cần ảnh chứng minh khi hoàn thành" />
-        </UFormField>
-
         <div class="grid grid-cols-2 gap-3">
           <UFormField name="reminderTime" label="Giờ nhắc" description="Để trống nếu không nhắc">
             <UInput v-model="state.reminderTime" type="time" class="w-full" />
@@ -146,7 +139,7 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
           variant="subtle"
           icon="i-lucide-calendar-clock"
           title="Có hiệu lực từ ngày mai"
-          description="Đổi lịch, yêu cầu ảnh hay hạn giờ không áp dụng cho hôm nay, để tránh sửa cho khỏi bị phạt."
+          description="Đổi lịch hay hạn giờ không áp dụng cho hôm nay, để tránh sửa cho khỏi bị phạt."
         />
       </UForm>
     </template>

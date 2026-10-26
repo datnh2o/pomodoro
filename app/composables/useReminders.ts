@@ -23,7 +23,6 @@ export const useReminders = () => {
   const notify = (task: ReminderTarget) => {
     toast.add({
       title: `Đến giờ: ${task.title}`,
-      description: task.requiresProof ? "Nhớ chụp ảnh chứng minh khi xong." : undefined,
       color: "warning",
       icon: "i-lucide-bell",
       duration: 15_000,
