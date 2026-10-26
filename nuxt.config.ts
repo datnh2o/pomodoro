@@ -1,3 +1,5 @@
+import { APP_DESCRIPTION, APP_NAME } from "./shared/utils/app";
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: "2026-10-17",
@@ -13,12 +15,14 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: "Nhiệm vụ hằng ngày",
+      title: APP_NAME,
       htmlAttrs: { lang: "vi" },
       meta: [
-        { name: "description", content: "Theo dõi nhiệm vụ hằng ngày, chứng minh bằng ảnh, phạt khi bỏ lỡ" },
+        { name: "description", content: APP_DESCRIPTION },
         { name: "format-detection", content: "telephone=no" },
         { name: "apple-mobile-web-app-capable", content: "yes" },
+        // Tên dưới icon khi thêm ra màn hình chính iPhone (iOS không lấy từ manifest)
+        { name: "apple-mobile-web-app-title", content: APP_NAME },
         { name: "apple-mobile-web-app-status-bar-style", content: "default" },
         { name: "theme-color", content: "#BA4949" },
       ],
@@ -33,8 +37,9 @@ export default defineNuxtConfig({
   pwa: {
     registerType: "autoUpdate",
     manifest: {
-      name: "Nhiệm vụ hằng ngày",
-      short_name: "Nhiệm vụ",
+      name: APP_NAME,
+      short_name: APP_NAME,
+      description: APP_DESCRIPTION,
       lang: "vi",
       display: "standalone",
       start_url: "/",

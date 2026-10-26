@@ -20,6 +20,7 @@ import {
 } from "../../shared/utils/models";
 import { MAX_PENALTY_MULTIPLIER, nextDayToClose, planDayClose, weekKeyOf } from "../../shared/utils/penalty";
 import { computeStats, normalizeDay, type DayMap } from "../../shared/utils/stats";
+import { APP_NAME } from "../../shared/utils/app";
 import { loadTasks } from "./tasks";
 
 /**
@@ -37,7 +38,7 @@ export interface ReminderEnv {
   vapidSubject: string;
   /** Resend API key để gửi email tổng kết tuần (tùy chọn) */
   resendApiKey?: string;
-  /** Địa chỉ gửi, vd "Nhiệm vụ hằng ngày <onboarding@resend.dev>" */
+  /** Địa chỉ gửi, vd "Daily Quest <onboarding@resend.dev>" */
   reportFrom?: string;
   /** URL app để chèn vào email (tùy chọn) */
   appUrl?: string;
@@ -166,7 +167,7 @@ const sendWeeklyEmail = async (
          <b>Tổng thưởng hiện tại:</b> ${formatMoney(ws.rewardTotal ?? 0)}</p>
       ${rows ? `<table style="border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:left;padding:4px 8px">Nhiệm vụ</th><th style="padding:4px 8px">Làm/Lịch</th><th style="padding:4px 8px">Bỏ lỡ</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
       ${shareLine}
-      <p style="color:#888;font-size:12px">Email tự động từ app Nhiệm vụ hằng ngày.</p>
+      <p style="color:#888;font-size:12px">Email tự động từ app ${APP_NAME}.</p>
     </div>`;
 
   const res = await fetch("https://api.resend.com/emails", {

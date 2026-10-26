@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FormError, FormSubmitEvent } from "@nuxt/ui";
+import { APP_NAME } from "#shared/utils/app";
 
 definePageMeta({ layout: false });
 
@@ -70,7 +71,7 @@ const onForgot = async () => {
       <template #header>
         <div class="flex items-center gap-2 text-lg font-bold text-primary">
           <IconsTomato :size="24" />
-          Nhiệm vụ hằng ngày
+          {{ APP_NAME }}
         </div>
       </template>
 

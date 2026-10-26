@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { todayKey } from "#shared/utils/dates";
+import { APP_NAME } from "#shared/utils/app";
 
 const route = useRoute();
 const { user, ready, signOut } = useAuth();
@@ -117,7 +118,7 @@ const isPomodoro = computed(() => route.path === "/pomodoro");
       <UContainer class="flex h-14 max-w-xl items-center justify-between">
         <NuxtLink to="/" :class="['flex items-center gap-2 text-lg font-bold', isPomodoro ? 'text-white' : 'text-primary']">
           <IconsTomato :size="22" />
-          Nhiệm vụ hằng ngày
+          {{ APP_NAME }}
         </NuxtLink>
 
         <div class="flex items-center gap-1">

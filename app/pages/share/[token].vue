@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { APP_NAME } from "#shared/utils/app";
 import { formatDateVi, formatMoney } from "#shared/utils/dates";
 
 definePageMeta({ layout: false });
@@ -42,7 +43,7 @@ const rate = computed(() => {
     <header class="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
       <UContainer class="flex h-14 max-w-xl items-center gap-2">
         <IconsTomato :size="22" class="text-primary" />
-        <span class="font-bold">{{ data?.name ?? "Nhiệm vụ hằng ngày" }}</span>
+        <span class="font-bold">{{ data?.name ?? APP_NAME }}</span>
         <UBadge color="neutral" variant="subtle" size="sm" icon="i-lucide-eye" class="ml-auto">Chỉ xem</UBadge>
       </UContainer>
     </header>

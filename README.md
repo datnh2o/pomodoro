@@ -1,4 +1,4 @@
-# Pomodoro Timer
+# Daily Quest
 
 Nhiệm vụ hằng ngày: tích hoàn thành, phạt khi bỏ lỡ, thưởng và rương khi xong hết, kèm tab Pomodoro. Đăng nhập Firebase, dữ liệu trên Firestore.
 

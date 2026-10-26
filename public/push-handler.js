@@ -6,7 +6,7 @@ self.addEventListener("push", (event) => {
   } catch (_) {
     data = { body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "Nhiệm vụ hằng ngày";
+  const title = data.title || "Daily Quest";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || "",

@@ -1,4 +1,4 @@
-// Widget "Nhiệm vụ hằng ngày" cho app Scriptable (iPhone).
+// Widget "Daily Quest" (nhiệm vụ hằng ngày) cho app Scriptable (iPhone).
 // Tạo từ app: Cài đặt > Thông báo > Widget màn hình chính, đã điền sẵn địa chỉ và mã link chia sẻ chỉ đọc.
 // Dùng được cho widget nhỏ / vừa / lớn ở màn hình chính và widget màn hình khoá.
 
