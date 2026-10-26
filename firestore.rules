@@ -84,7 +84,8 @@ service cloud.firestore {
         allow update: if isOwner(wsId)
           || (can(wsId, 'add')
               && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['completions', 'chestOpenedAt']));
-        allow delete: if false;
+        // Chỉ xóa được lịch sử trước ngày bắt đầu tính ("Bắt đầu lại từ hôm nay" đổi createdDate trước rồi mới xóa)
+        allow delete: if isOwner(wsId) && date < ws(wsId).createdDate;
       }
 
       // Đăng ký nhắc đẩy: mỗi thành viên chỉ đụng tới đăng ký của chính mình

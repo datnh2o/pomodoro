@@ -148,8 +148,9 @@ lên lịch nhiệm vụ chính, không phạt, không đứt streak, không g�
 - Gỡ toàn bộ ảnh chứng minh: không còn `requiresProof`, `proofs`, modal nộp ảnh, hàng đợi ảnh ngoại tuyến,
   chặn nộp lại ảnh. Tích là xong. Cloudinary chỉ còn dùng cho ảnh đại diện (`useImageUpload`).
 - Cài đặt > Kỷ luật > "Bắt đầu lại từ hôm nay" (`useRestart`): `createdDate` = hôm nay, `lastClosedDate` = null,
-  ví/rương/chuỗi lỡ về 0, nhiệm vụ chính `effectiveFrom` = hôm nay. `computeStats` bỏ qua mọi ngày trước
-  `earliest` (kể cả tiền đã chốt) nên không cần xóa `days` cũ.
+  ví/rương/chuỗi lỡ về 0, nhiệm vụ chính `effectiveFrom` = hôm nay; rồi xóa hẳn `days` trước hôm nay, việc phụ đã
+  xong trước hôm nay và bản nhiệm vụ chính đã ngừng. Rules: owner chỉ xóa được `days` có ngày < `createdDate`
+  (nên phải cập nhật workspace trước). `computeStats` vẫn bỏ qua ngày trước `earliest` phòng khi xóa dở.
 
 ### Widget màn hình chính qua Scriptable (2026-10-19)
 - iOS chưa cho PWA có widget, nên dùng app Scriptable (miễn phí). Cài đặt > Thông báo > "Sao chép script"

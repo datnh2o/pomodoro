@@ -91,7 +91,7 @@ const onRestart = async () => {
   const ok = await confirmAction({
     title: "Bắt đầu lại từ hôm nay?",
     description:
-      "Ngày bắt đầu tính thành hôm nay; mọi nhiệm vụ chính có hiệu lực từ hôm nay; tổng nợ, tiền thưởng, số rương và chuỗi về 0. Lịch sử các ngày trước không còn hiện trong Nhật ký và Tổng hợp. Không hoàn tác được.",
+      "Xóa hẳn kết quả các ngày trước hôm nay và việc phụ đã xong trước hôm nay; tổng nợ, tiền thưởng, số rương và chuỗi về 0; mọi nhiệm vụ chính có hiệu lực từ hôm nay. Việc đã tích hôm nay giữ nguyên. Không hoàn tác được.",
     confirmLabel: "Bắt đầu lại",
     color: "error",
     icon: "i-lucide-rotate-ccw",
@@ -99,8 +99,13 @@ const onRestart = async () => {
   if (!ok) return;
   restarting.value = true;
   try {
-    await restartFromToday();
-    toast.add({ title: "Đã bắt đầu lại từ hôm nay", description: formatDateVi(today.value), color: "success", icon: "i-lucide-rotate-ccw" });
+    const result = await restartFromToday();
+    toast.add({
+      title: "Đã bắt đầu lại từ hôm nay",
+      description: `Đã xóa ${result.daysDeleted} ngày cũ và ${result.tasksDeleted} nhiệm vụ cũ.`,
+      color: "success",
+      icon: "i-lucide-rotate-ccw",
+    });
   } catch (error) {
     showError("Không bắt đầu lại được", error);
   } finally {
@@ -491,8 +496,8 @@ const onChangePassword = async () => {
     <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bắt đầu lại</h2>
       <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-        Đặt ngày bắt đầu tính là hôm nay ({{ formatShortVi(today) }}): chuỗi, tổng nợ, tiền thưởng và số rương đếm lại từ đầu, các
-        ngày trước không còn tính. Nhiệm vụ chính giữ nguyên, chỉ đổi ngày có hiệu lực.
+        Xóa hẳn lịch sử trước hôm nay ({{ formatShortVi(today) }}) và đếm lại từ đầu: chuỗi, tổng nợ, tiền thưởng, số rương.
+        Nhiệm vụ chính giữ nguyên, chỉ đổi ngày có hiệu lực; việc phụ đã xong trước hôm nay bị xóa.
       </p>
       <p v-if="workspace?.createdDate" class="mb-3 text-xs text-gray-500 dark:text-gray-400">Đang tính từ {{ formatDateVi(workspace.createdDate) }}.</p>
       <UButton color="error" variant="outline" icon="i-lucide-rotate-ccw" :loading="restarting" @click="onRestart">Bắt đầu lại từ hôm nay</UButton>
