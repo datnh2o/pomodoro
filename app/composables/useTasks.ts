@@ -207,9 +207,14 @@ export const useTasks = () => {
     });
   };
 
-  /** Tích nhiệm vụ phụ (đã xong là chốt, không bỏ tích) */
+  /** Tích nhiệm vụ phụ */
   const completeSideTask = async (task: SideTask) => {
     await updateDoc(taskRef(task.id), { doneDate: todayKey(), doneAt: Date.now(), doneBy: requireUid() });
+  };
+
+  /** Bỏ tích nhiệm vụ phụ (tích nhầm): việc hiện lại trong danh sách chưa xong */
+  const uncompleteSideTask = async (task: SideTask) => {
+    await updateDoc(taskRef(task.id), { doneDate: null, doneAt: null, doneBy: null });
   };
 
   const deleteSideTask = async (task: SideTask) => {
@@ -235,6 +240,7 @@ export const useTasks = () => {
     createSideTask,
     updateSideTask,
     completeSideTask,
+    uncompleteSideTask,
     deleteSideTask,
     deleteTaskById,
   };

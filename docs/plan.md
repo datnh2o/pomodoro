@@ -11,7 +11,7 @@ Stack giữ nguyên: Nuxt 4 + Nuxt UI 4 + Firebase (Auth, Firestore).
 | Workspace | Một "bảng" nhiệm vụ. Mỗi người có 1 workspace của mình; có thể mời tài khoản con vào với quyền xem / thêm / sửa. |
 | Nhiệm vụ chính | Lặp theo các thứ trong tuần cấu hình sẵn (có thể gồm T7, CN). Bỏ lỡ bị phạt. Có thể yêu cầu ảnh, có thể có giờ nhắc. |
 | Nhiệm vụ phụ | Thêm tay hoặc bằng giọng nói. Không phạt. Có cùng tùy chọn như nhiệm vụ chính: ghi chú, cần ảnh chứng minh, giờ nhắc (nhắc mỗi ngày tới khi xong). Chưa xong thì tự hiện lại ngày hôm sau cho tới khi xong (dồn mãi). |
-| Hoàn thành | Ghi nhận theo ngày (chỉ chủ sở hữu tích nhiệm vụ chính). Đã xong là chốt, không bỏ tích. |
+| Hoàn thành | Ghi nhận theo ngày (chỉ chủ sở hữu tích nhiệm vụ chính). Tích nhầm: bấm "Hoàn tác" trong thông báo (12 giây) hoặc "Bỏ tích" ở Nhật ký > hôm nay, trước khi chốt. |
 | Chốt ngày | 00:00 giờ Việt Nam, không ân hạn. Khi chốt: đếm nhiệm vụ chính của ngày chưa xong × 10k → ghi vào sổ phạt. |
 | Sổ phạt | Chỉ cần tổng nợ, cộng dồn từ các ngày đã chốt. |
 

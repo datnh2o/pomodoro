@@ -10,12 +10,13 @@ import { levelOf } from "~/utils/game";
 const { user } = useAuth();
 const { workspace, can, isOwner } = useWorkspace();
 const { confirmAction } = useConfirm();
-const { ready: tasksReady, mainTasksFor, sideTasksFor, createSideTask, updateSideTask, completeSideTask, deleteSideTask } = useTasks();
-const { today, dayDoc, isCompleted, completionOf, complete, closePastDays, markChestOpened } = useDay();
+const { ready: tasksReady, mainTasksFor, sideTasksFor, createSideTask, updateSideTask, completeSideTask, uncompleteSideTask, deleteSideTask } = useTasks();
+const { today, dayDoc, isCompleted, completionOf, complete, uncomplete, closePastDays, markChestOpened } = useDay();
 const { showError } = useErrorToast();
 const { check: checkReminders } = useReminders();
 const { fetchDays, currentFullStreak } = useHistory();
 const { tasks } = useTasks();
+const toast = useToast();
 
 // Chuỗi ngày hoàn thành đủ nhiệm vụ chính: đọc lịch sử 120 ngày gần nhất một lần, tính lại khi tích
 const streakDays = ref<DayMap>({});
@@ -108,9 +109,10 @@ const onChestOpened = async () => {
 };
 const chestState = computed(() => (!allDone.value ? "locked" : chestOpened.value ? "open" : "ready"));
 const chestModal = ref(false);
-// Vừa xong việc cuối cùng: bật rương cho chủ sở hữu (thành viên khác chỉ xem)
+// Vừa xong việc cuối cùng: bật rương cho chủ sở hữu (thành viên khác chỉ xem); bỏ tích lại thì đóng rương
 watch(allDone, (value) => {
   if (value && isOwner.value && !chestOpened.value) chestModal.value = true;
+  if (!value) chestModal.value = false;
 });
 
 // Badge số việc chưa xong trên icon app (iPhone: web app đã thêm ra màn hình chính)
@@ -165,10 +167,36 @@ onMounted(() => {
 });
 onBeforeUnmount(() => clearInterval(reminderClock));
 
-// ---- Hoàn thành ----
+// ---- Hoàn thành, kèm "Hoàn tác" trong thông báo cho trường hợp kéo nhầm ----
+const UNDO_TOAST_MS = 12_000;
+const undoToast = (title: string, undo: () => Promise<void>) =>
+  toast.add({
+    title,
+    description: "Kéo nhầm? Bấm Hoàn tác để bỏ tích.",
+    color: "success",
+    icon: "i-lucide-circle-check",
+    duration: UNDO_TOAST_MS,
+    actions: [
+      {
+        label: "Hoàn tác",
+        icon: "i-lucide-undo-2",
+        color: "neutral",
+        variant: "outline",
+        onClick: async () => {
+          try {
+            await undo();
+          } catch (error) {
+            showError("Không bỏ tích được", error);
+          }
+        },
+      },
+    ],
+  });
+
 const onCompleteRequest = async (task: MainTask) => {
   try {
     await complete(task);
+    undoToast(`Đã xong: ${task.title}`, () => uncomplete(task));
   } catch (error) {
     showError("Không tích được", error);
   }
@@ -206,6 +234,7 @@ const onSaveSide = async (input: Required<SideTaskInput>) => {
 const onCompleteSide = async (task: SideTask) => {
   try {
     await completeSideTask(task);
+    undoToast(`Đã xong: ${task.title}`, () => uncompleteSideTask(task));
   } catch (error) {
     showError("Không cập nhật được", error);
   }

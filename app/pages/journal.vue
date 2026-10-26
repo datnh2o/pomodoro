@@ -4,9 +4,10 @@ import { isMainTask, isRestDay, isScheduledOn, isSideTask, type MainTask, type S
 import { PERIODS, groupByPeriod, slotTimeOf } from "~/utils/periods";
 import { addDays, formatDateVi, formatMoney, todayKey, weekdayOf } from "#shared/utils/dates";
 
-const { workspace } = useWorkspace();
-const { tasks, ready: tasksReady } = useTasks();
-const { dayDoc } = useDay();
+const { user } = useAuth();
+const { workspace, can, isOwner } = useWorkspace();
+const { tasks, ready: tasksReady, uncompleteSideTask } = useTasks();
+const { dayDoc, uncomplete } = useDay();
 const { fetchDays, computeStats } = useHistory();
 const { showError } = useErrorToast();
 
@@ -16,6 +17,24 @@ const month = ref(today.value.slice(0, 7));
 const selected = ref<string>(today.value);
 const days = ref<DayMap>({});
 const loading = ref(false);
+
+// Bỏ tích (tích nhầm) chỉ cho hôm nay, trước khi chốt: việc chính cần chủ sở hữu, việc phụ cần quyền thêm
+const canUntickMain = computed(() => selected.value === today.value && isOwner.value && !dayDoc.value?.closed);
+const canUntickSide = (task: SideTask) => selected.value === today.value && (can("edit") || task.createdBy === user.value?.uid);
+const onUntickMain = async (task: MainTask) => {
+  try {
+    await uncomplete(task);
+  } catch (error) {
+    showError("Không bỏ tích được", error);
+  }
+};
+const onUntickSide = async (task: SideTask) => {
+  try {
+    await uncompleteSideTask(task);
+  } catch (error) {
+    showError("Không bỏ tích được", error);
+  }
+};
 
 const monthStart = computed(() => `${month.value}-01`);
 const monthEnd = computed(() => {
@@ -213,6 +232,7 @@ const showPeriodHeader = computed(() => selectedGroups.value.length > 1 || selec
               <span :class="['font-medium', !row.done && 'text-gray-500 dark:text-gray-400']">{{ row.task.title }}</span>
               <span v-if="slotTimeOf(row.task)" class="text-xs text-gray-400">{{ slotTimeOf(row.task) }}</span>
               <span class="ml-auto text-xs text-gray-400">{{ row.done ? "Đã làm" : selected < today ? "Bỏ lỡ" : "Chưa làm" }}</span>
+              <UButton v-if="row.done && canUntickMain" size="xs" color="neutral" variant="outline" icon="i-lucide-undo-2" @click="onUntickMain(row.task)">Bỏ tích</UButton>
             </div>
           </li>
           <li v-for="task in group.side" :key="task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 text-sm shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
@@ -221,6 +241,7 @@ const showPeriodHeader = computed(() => selectedGroups.value.length > 1 || selec
               <span>{{ task.title }}</span>
               <span v-if="slotTimeOf(task)" class="text-xs text-gray-400">{{ slotTimeOf(task) }}</span>
               <UBadge color="neutral" variant="subtle" size="sm" class="ml-auto">Phụ</UBadge>
+              <UButton v-if="canUntickSide(task)" size="xs" color="neutral" variant="outline" icon="i-lucide-undo-2" @click="onUntickSide(task)">Bỏ tích</UButton>
             </div>
           </li>
           </ul>
