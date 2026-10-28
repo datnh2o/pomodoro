@@ -48,5 +48,5 @@ app/
 shared/utils/   dates, models, stats (dùng chung app + server)
 server/         api/share/[token], api/cron/reminders, lib/reminders
 netlify/        functions/reminders.mts (scheduled, mỗi phút)
-public/         icons, push-handler.js, alert.mp3, lofi.mp3
+public/         icons, push-handler.js, alert.mp3, rain.mp3
 ```

@@ -117,7 +117,7 @@ export const usePomodoro = () => {
     if (!source?.live || !musicPlaying.value) return;
     toast.add({
       title: `Không phát được ${source.name}`,
-      description: "Đã chuyển sang bản lofi có sẵn.",
+      description: "Đã chuyển sang tiếng mưa có sẵn.",
       color: "warning",
       icon: "i-lucide-radio",
     });

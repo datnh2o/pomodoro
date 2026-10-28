@@ -10,12 +10,14 @@ export interface MusicSource {
 }
 
 /**
- * Nhạc khi chạy Pomodoro. Các đài lofi lấy từ danh bạ Radio Browser (radio-browser.info),
- * chỉ giữ link HTTPS và đã thử phát được trong trình duyệt (2026-10-19). Đài là của bên thứ ba,
- * có thể đổi link hoặc ngừng phát: khi lỗi app tự chuyển về bản có sẵn.
+ * Nhạc khi chạy Pomodoro. Tiếng mưa có sẵn (public/rain.mp3) là loop "Rain (loopable)" của Ylmir trên
+ * OpenGameArt, giấy phép CC0: https://opengameart.org/content/rain-loopable (file có tag LAME nên lặp liền mạch).
+ * Các đài lofi lấy từ danh bạ Radio Browser (radio-browser.info), chỉ giữ link HTTPS và đã thử phát được
+ * trong trình duyệt (2026-10-19). Đài là của bên thứ ba, có thể đổi link hoặc ngừng phát: khi lỗi app tự
+ * chuyển về tiếng mưa có sẵn.
  */
 export const MUSIC_SOURCES: MusicSource[] = [
-  { id: "local", name: "Bản lofi có sẵn", url: "/lofi.mp3", live: false },
+  { id: "local", name: "Tiếng mưa có sẵn", url: "/rain.mp3", live: false },
   { id: "reyfm", name: "REYFM #lofi", url: "https://listen.reyfm.de/lofi_128kbps.mp3", live: true, homepage: "https://www.reyfm.de/" },
   { id: "ilovechillhop", name: "I Love Chillhop", url: "https://ilm.stream12.radiohost.de/ilm_ilovechillhop_mp3-192", live: true, homepage: "https://www.ilovemusic.de/ilovechillhop/" },
   { id: "lautfm", name: "laut.fm lofi", url: "https://stream.laut.fm/lofi", live: true, homepage: "https://laut.fm/lofi" },
