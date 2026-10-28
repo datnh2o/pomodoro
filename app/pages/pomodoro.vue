@@ -43,7 +43,7 @@ const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
             i < cycle.focusIndex || (i === cycle.focusIndex && modeKey !== 'pomodoro') ? 'bg-white' : i === cycle.focusIndex ? 'bg-white ring-2 ring-white/50' : 'bg-white/30',
           ]"
         />
-        <button type="button" class="ml-2 rounded-full p-1 hover:bg-black/10" aria-label="Cài đặt vòng Pomodoro" @click="settingsOpen = true">
+        <button type="button" class="ml-2 flex h-7 w-7 items-center justify-center rounded-full hover:bg-black/10" aria-label="Cài đặt vòng Pomodoro" @click="settingsOpen = true">
           <UIcon name="i-lucide-settings-2" class="h-4 w-4" />
         </button>
       </div>
@@ -67,12 +67,12 @@ const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
         @update:model-value="(value) => setMusic(String(value))"
       />
       <div class="flex items-center gap-5" role="group" aria-label="Điều khiển nhạc">
-        <button type="button" class="rounded-full p-2 transition hover:bg-black/10" aria-label="Kênh trước" title="Kênh trước" @click="prevMusic">
+        <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-black/10" aria-label="Kênh trước" title="Kênh trước" @click="prevMusic">
           <UIcon name="i-lucide-skip-back" class="h-5 w-5" />
         </button>
         <button
           type="button"
-          class="rounded-full bg-white/20 p-2.5 transition enabled:hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-40"
+          class="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 transition enabled:hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-40"
           :aria-label="musicPlaying ? 'Dừng nhạc' : 'Phát nhạc'"
           :title="musicPlaying ? 'Dừng nhạc' : 'Phát nhạc'"
           :disabled="!music.url"
@@ -80,7 +80,7 @@ const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
         >
           <UIcon :name="musicPlaying ? 'i-lucide-pause' : 'i-lucide-play'" class="h-6 w-6" />
         </button>
-        <button type="button" class="rounded-full p-2 transition hover:bg-black/10" aria-label="Kênh sau" title="Kênh sau" @click="nextMusic">
+        <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-black/10" aria-label="Kênh sau" title="Kênh sau" @click="nextMusic">
           <UIcon name="i-lucide-skip-forward" class="h-5 w-5" />
         </button>
       </div>

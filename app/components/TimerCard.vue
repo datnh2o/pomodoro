@@ -27,7 +27,7 @@ const { mode, running, formatted, toggle, reset } = usePomodoro();
       <button
         v-if="running && mode.skippable"
         type="button"
-        class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 transition hover:bg-black/10"
+        class="absolute right-2 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition hover:bg-black/10"
         aria-label="Reset timer"
         title="Reset timer"
         @click="reset"

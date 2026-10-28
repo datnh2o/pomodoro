@@ -42,7 +42,7 @@ const menu = computed(() => [
       type="button"
       :disabled="!canAct || done"
       :aria-label="done ? 'Đã hoàn thành' : 'Hoàn thành'"
-      class="mt-0.5 shrink-0 rounded-full disabled:opacity-50"
+      class="mt-0.5 flex shrink-0 rounded-full disabled:opacity-50"
       @click="onCompleteClick"
     >
       <UIcon :name="done ? 'i-lucide-circle-check' : 'i-lucide-circle'" :class="['h-6 w-6', done ? 'text-green-600' : 'text-gray-400']" />

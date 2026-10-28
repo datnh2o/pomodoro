@@ -94,7 +94,7 @@ const coins = Array.from({ length: 12 }, (_, i) => {
         @click.self="close"
       >
         <div class="relative w-full max-w-sm rounded-3xl bg-linear-to-b from-amber-400 via-orange-500 to-rose-600 p-6 text-center text-white shadow-2xl">
-          <button type="button" class="absolute right-3 top-3 rounded-full p-1.5 hover:bg-black/10" aria-label="Đóng" @click="close">
+          <button type="button" class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full hover:bg-black/10" aria-label="Đóng" @click="close">
             <UIcon name="i-lucide-x" class="h-5 w-5" />
           </button>
 

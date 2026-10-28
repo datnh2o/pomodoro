@@ -38,7 +38,7 @@ const swipeAction = { label: "Hoàn thành", icon: "i-lucide-circle-check", clas
       type="button"
       :disabled="!actionable"
       :aria-label="done ? 'Đã hoàn thành' : overdue ? 'Đã quá hạn' : 'Hoàn thành'"
-      class="mt-0.5 shrink-0 rounded-full disabled:opacity-50"
+      class="mt-0.5 flex shrink-0 rounded-full disabled:opacity-50"
       @click="primaryAction"
     >
       <UIcon
