@@ -97,6 +97,10 @@ export const usePomodoro = () => {
   });
   const musicId = useState<string>("pomodoro:music", () => findMusicSource(readSavedMusic() ?? DEFAULT_MUSIC_SOURCE).id);
   const music = computed(() => findMusicSource(musicId.value));
+  /** Muốn có nhạc khi đồng hồ chạy. Bấm dừng nhạc thì tắt tới khi bấm phát lại, kể cả sang phiên mới (không lưu) */
+  const musicOn = useState<boolean>("pomodoro:musicOn", () => true);
+  /** Nhạc đang phát thật, theo sự kiện của thẻ audio (đúng cả khi hệ thống dừng nhạc từ màn khoá, cuộc gọi) */
+  const musicPlaying = useState<boolean>("pomodoro:musicPlaying", () => false);
   const toast = useToast();
 
   const formatted = computed(() => {
@@ -107,10 +111,10 @@ export const usePomodoro = () => {
 
   // ---- Nhạc ----
 
-  /** Đài trực tuyến lỗi (mất mạng, đài ngừng phát) khi đang chạy: báo và chuyển về bản có sẵn */
+  /** Đài trực tuyến lỗi (mất mạng, đài ngừng phát) khi đang phát: báo và chuyển về bản có sẵn */
   const onMusicError = () => {
     const source = loadedSource();
-    if (!source?.live || !running.value) return;
+    if (!source?.live || !musicPlaying.value) return;
     toast.add({
       title: `Không phát được ${source.name}`,
       description: "Đã chuyển sang bản lofi có sẵn.",
@@ -127,19 +131,25 @@ export const usePomodoro = () => {
     if (!musicAudio) {
       musicAudio = new Audio();
       musicAudio.addEventListener("error", onMusicError);
+      musicAudio.addEventListener("play", () => (musicPlaying.value = true));
+      musicAudio.addEventListener("pause", () => (musicPlaying.value = false));
     }
+    const audio = musicAudio;
     if (loadedUrl !== source.url) {
-      musicAudio.src = source.url;
-      musicAudio.loop = !source.live;
+      audio.src = source.url;
+      audio.loop = !source.live;
       loadedUrl = source.url;
     }
-    musicAudio.play().catch(() => {});
+    // Đặt ngay để nút phát/dừng đổi tức thì; play() bị từ chối (trình duyệt chặn tự phát) thì lấy lại trạng thái thật
+    musicPlaying.value = true;
+    audio.play().catch(() => (musicPlaying.value = !audio.paused));
   };
 
   /** Dừng nhạc. Đài trực tuyến thì ngắt hẳn để không tốn dữ liệu; phát lại sẽ vào đúng lúc đài đang phát */
   const pauseMusic = () => {
     if (!musicAudio) return;
     musicAudio.pause();
+    musicPlaying.value = false;
     if (loadedSource()?.live) {
       loadedUrl = null;
       musicAudio.removeAttribute("src");
@@ -147,13 +157,32 @@ export const usePomodoro = () => {
     }
   };
 
-  /** Đổi nguồn nhạc (nhớ trên máy này); đồng hồ đang chạy thì phát luôn nguồn mới */
+  /** Đổi nguồn nhạc (nhớ trên máy này). Đang phát, hoặc đồng hồ đang chạy mà nhạc đang bật, thì phát luôn nguồn mới */
   const setMusic = (id: string) => {
+    const wasPlaying = musicPlaying.value;
     pauseMusic();
     musicId.value = findMusicSource(id).id;
     saveMusic(musicId.value);
-    if (running.value) playMusic();
+    if (wasPlaying || (running.value && musicOn.value)) playMusic();
   };
+
+  /** Nút phát/dừng nhạc, độc lập với đồng hồ: phát được cả khi đồng hồ dừng; dừng thì giữ im tới khi bấm phát lại */
+  const toggleMusic = () => {
+    if (!music.value.url) return;
+    musicOn.value = !musicPlaying.value;
+    if (musicOn.value) playMusic();
+    else pauseMusic();
+  };
+
+  /** Chuyển kênh trước/sau, xoay vòng trong các nguồn có nhạc (bỏ qua "Tắt nhạc"; đang tắt thì vào đầu/cuối danh sách) */
+  const stepMusic = (delta: 1 | -1) => {
+    const playable = MUSIC_SOURCES.filter((s) => s.url !== null);
+    const index = playable.findIndex((s) => s.id === musicId.value);
+    const target = index < 0 ? (delta > 0 ? 0 : playable.length - 1) : (index + delta + playable.length) % playable.length;
+    setMusic(playable[target]!.id);
+  };
+  const nextMusic = () => stepMusic(1);
+  const prevMusic = () => stepMusic(-1);
 
   // ---- Đồng hồ ----
 
@@ -170,10 +199,11 @@ export const usePomodoro = () => {
   };
 
   const reset = () => {
-    stop();
+    // Đồng hồ đang chạy thì dừng cả nhạc; nhạc đang phát riêng (đồng hồ dừng) thì để nguyên
+    if (running.value) stop();
     remaining.value = durationOf(modeKey.value);
-    // Bản có sẵn thì tua về đầu; đài trực tuyến đã ngắt khi dừng
-    if (musicAudio && loadedSource()) musicAudio.currentTime = 0;
+    // Bản có sẵn đang dừng thì tua về đầu; đài trực tuyến đã ngắt khi dừng
+    if (musicAudio && loadedSource() && !musicPlaying.value) musicAudio.currentTime = 0;
   };
 
   const start = () => {
@@ -182,7 +212,7 @@ export const usePomodoro = () => {
     endTime = Date.now() + remaining.value * 1000;
     running.value = true;
     interval = setInterval(tick, 250);
-    playMusic();
+    if (musicOn.value) playMusic();
   };
 
   const toggle = () => (running.value ? stop() : start());
@@ -250,7 +280,7 @@ export const usePomodoro = () => {
 
   return {
     modeKey, mode, remaining, running, formatted, start, stop, reset, toggle, selectMode,
-    musicId, music, setMusic,
+    musicId, music, setMusic, musicPlaying, toggleMusic, nextMusic, prevMusic,
     settings, cycle, durationOf, updateSettings, resetCycle,
   };
 };

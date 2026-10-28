@@ -3,7 +3,8 @@ import { MODE_LIST } from "~/utils/modes";
 import { MUSIC_SOURCES, type MusicSource } from "~/utils/music";
 
 // Bấm tab chế độ thủ công thì không tự chạy; hết giờ tự chuyển tiếp theo vòng nằm trong usePomodoro
-const { modeKey, mode, selectMode, musicId, music, setMusic, cycle, settings } = usePomodoro();
+const { modeKey, mode, selectMode, musicId, music, setMusic, musicPlaying, toggleMusic, prevMusic, nextMusic, cycle, settings } =
+  usePomodoro();
 const settingsOpen = ref(false);
 
 const musicIcon = (s: MusicSource) => (s.url === null ? "i-lucide-volume-x" : s.live ? "i-lucide-radio" : "i-lucide-music");
@@ -53,7 +54,7 @@ const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
       </p>
     </div>
 
-    <!-- Nguồn nhạc: bản đi kèm app hoặc đài lofi trực tuyến; đổi khi đang chạy thì phát luôn -->
+    <!-- Nguồn nhạc: bản đi kèm app hoặc đài lofi trực tuyến. Phát/dừng và chuyển kênh độc lập với đồng hồ -->
     <div class="flex flex-col items-center gap-1.5 pb-1">
       <USelect
         :model-value="musicId"
@@ -65,6 +66,24 @@ const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
         :ui="{ base: 'rounded-md bg-black/15 text-white', leadingIcon: 'text-white', trailingIcon: 'text-white/80' }"
         @update:model-value="(value) => setMusic(String(value))"
       />
+      <div class="flex items-center gap-5" role="group" aria-label="Điều khiển nhạc">
+        <button type="button" class="rounded-full p-2 transition hover:bg-black/10" aria-label="Kênh trước" title="Kênh trước" @click="prevMusic">
+          <UIcon name="i-lucide-skip-back" class="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          class="rounded-full bg-white/20 p-2.5 transition enabled:hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-40"
+          :aria-label="musicPlaying ? 'Dừng nhạc' : 'Phát nhạc'"
+          :title="musicPlaying ? 'Dừng nhạc' : 'Phát nhạc'"
+          :disabled="!music.url"
+          @click="toggleMusic"
+        >
+          <UIcon :name="musicPlaying ? 'i-lucide-pause' : 'i-lucide-play'" class="h-6 w-6" />
+        </button>
+        <button type="button" class="rounded-full p-2 transition hover:bg-black/10" aria-label="Kênh sau" title="Kênh sau" @click="nextMusic">
+          <UIcon name="i-lucide-skip-forward" class="h-5 w-5" />
+        </button>
+      </div>
       <p class="text-xs text-white/75">
         <template v-if="music.homepage">
           Đài phát trực tuyến 24/7 ·
