@@ -4,7 +4,7 @@ import type { FormError, FormSubmitEvent } from "@nuxt/ui";
 const open = defineModel<boolean>("open", { default: false });
 const emit = defineEmits<{ saved: [] }>();
 
-const { user, usesPassword, updateDisplayName, updatePhotoURL, changeEmail, refreshUser } = useAuth();
+const { user, usesPassword, updateDisplayName, updatePhotoURL, changeEmail, refreshUser, googlePhotoURL } = useAuth();
 const { updateOwnMemberInfo } = useWorkspace();
 const { upload, isConfigured, thumbnailUrl } = useImageUpload();
 const { showError } = useErrorToast();
@@ -42,6 +42,27 @@ const onPickAvatar = (event: Event) => {
   avatarFile.value = file;
   if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
   avatarPreview.value = URL.createObjectURL(file);
+};
+
+// Dùng ảnh Google: ghi ngay (không cần bấm Lưu), bỏ ảnh đang chọn để tải
+const usingGoogle = ref(false);
+const useGoogleAvatar = async () => {
+  usingGoogle.value = true;
+  try {
+    const url = await googlePhotoURL();
+    if (!url) throw new Error("Tài khoản Google này không có ảnh đại diện.");
+    await updatePhotoURL(url);
+    await refreshUser();
+    avatarFile.value = null;
+    if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
+    avatarPreview.value = null;
+    toast.add({ title: "Đã dùng ảnh Google", color: "success" });
+  } catch (error) {
+    if ((error as { code?: string }).code === "auth/popup-closed-by-user") return;
+    showError("Không lấy được ảnh Google", error);
+  } finally {
+    usingGoogle.value = false;
+  }
 };
 
 const validate = (data: FormState): FormError[] => {
@@ -96,13 +117,19 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
             size="3xl"
             referrerpolicy="no-referrer"
           />
-          <label class="cursor-pointer">
-            <span class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-              <UIcon name="i-lucide-image-up" class="h-4 w-4" />
-              Đổi ảnh
-            </span>
-            <input type="file" accept="image/*" class="sr-only" @change="onPickAvatar" />
-          </label>
+          <div class="flex flex-col items-start gap-2">
+            <label class="cursor-pointer">
+              <span class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <UIcon name="i-lucide-image-up" class="h-4 w-4" />
+                Đổi ảnh
+              </span>
+              <input type="file" accept="image/*" class="sr-only" @change="onPickAvatar" />
+            </label>
+            <UButton color="neutral" variant="outline" size="sm" :loading="usingGoogle" @click="useGoogleAvatar">
+              <IconsGoogle class="h-4 w-4" />
+              Dùng ảnh Google
+            </UButton>
+          </div>
         </div>
 
         <UFormField name="displayName" label="Tên hiển thị" required>

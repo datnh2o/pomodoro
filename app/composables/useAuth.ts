@@ -1,6 +1,8 @@
 import {
   EmailAuthProvider,
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  linkWithPopup,
   reauthenticateWithCredential,
   reauthenticateWithPopup,
   sendPasswordResetEmail,
@@ -100,6 +102,22 @@ export const useAuth = () => {
     await updateProfile(current, { displayName: displayName.trim() });
   };
 
+  /**
+   * Ảnh đại diện Google của tài khoản: lấy từ nhà cung cấp Google đã gắn; chưa gắn thì mở cửa sổ
+   * liên kết Google (cùng email) rồi lấy ảnh. Trả về null nếu Google không có ảnh.
+   */
+  const googlePhotoURL = async (): Promise<string | null> => {
+    const current = auth().currentUser;
+    if (!current) throw new Error("User is not authenticated");
+    let google = current.providerData.find((p) => p.providerId === GoogleAuthProvider.PROVIDER_ID);
+    if (!google) {
+      const result = await linkWithPopup(current, useNuxtApp().$firebase.googleProvider);
+      google = result.user.providerData.find((p) => p.providerId === GoogleAuthProvider.PROVIDER_ID);
+    }
+    // Google trả ảnh 96px (=s96-c); xin cỡ lớn hơn cho avatar
+    return google?.photoURL?.replace(/=s\d+-c$/, "=s400-c") ?? null;
+  };
+
   const updatePhotoURL = async (photoURL: string) => {
     const current = auth().currentUser;
     if (!current) throw new Error("User is not authenticated");
@@ -134,6 +152,7 @@ export const useAuth = () => {
     refreshUser,
     usesPassword,
     updateDisplayName,
+    googlePhotoURL,
     updatePhotoURL,
     changeEmail,
   };
