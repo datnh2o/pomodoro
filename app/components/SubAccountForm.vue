@@ -33,23 +33,23 @@ const onSubmit = async (event: FormSubmitEvent<SubAccountInput>) => {
 </script>
 
 <template>
-  <UModal v-model:open="open" title="Thêm tài khoản con" description="Tài khoản này đăng nhập bằng email + mật khẩu và dùng chung bảng nhiệm vụ của bạn.">
+  <UModal v-model:open="open" title="Thêm tài khoản con">
     <template #body>
       <UForm id="sub-account-form" :state="state" :validate="validate" class="flex flex-col gap-4" @submit="onSubmit">
         <UFormField name="displayName" label="Tên hiển thị" required>
           <UInput v-model="state.displayName" size="lg" class="w-full" autofocus />
         </UFormField>
-        <UFormField name="email" label="Email đăng nhập" required>
+        <UFormField name="email" label="Email" required>
           <UInput v-model="state.email" type="email" size="lg" class="w-full" autocomplete="off" />
         </UFormField>
-        <UFormField name="password" label="Mật khẩu" required description="Người dùng có thể đổi sau bằng Quên mật khẩu.">
+        <UFormField name="password" label="Mật khẩu" required>
           <PasswordInput v-model="state.password" autocomplete="new-password" />
         </UFormField>
         <div class="flex flex-col gap-2 rounded-lg bg-gray-50 dark:bg-gray-950 p-3">
           <p class="text-sm font-medium">Quyền</p>
-          <USwitch :model-value="true" disabled label="Xem (luôn có)" />
-          <USwitch v-model="state.add" label="Thêm: tạo nhiệm vụ phụ, tích hoàn thành, tải ảnh" />
-          <USwitch v-model="state.edit" label="Sửa: thêm/sửa/ngừng nhiệm vụ chính" />
+          <USwitch :model-value="true" disabled label="Xem" />
+          <USwitch v-model="state.add" label="Thêm việc phụ" />
+          <USwitch v-model="state.edit" label="Sửa nhiệm vụ chính" />
         </div>
       </UForm>
     </template>

@@ -85,7 +85,7 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
 </script>
 
 <template>
-  <UModal v-model:open="open" title="Cập nhật hồ sơ">
+  <UModal v-model:open="open" title="Hồ sơ">
     <template #body>
       <UForm id="profile-form" :state="state" :validate="validate" class="flex flex-col gap-4" @submit="onSubmit">
         <div class="flex items-center gap-4">
@@ -106,16 +106,13 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
           <UInput v-model="state.displayName" size="lg" maxlength="80" class="w-full" />
         </UFormField>
 
-        <UFormField name="email" label="Email" required :description="emailChanged ? 'Email mới cần xác minh qua link gửi tới địa chỉ đó.' : undefined">
+        <UFormField name="email" label="Email" required :description="emailChanged ? 'Cần xác minh qua email mới' : undefined">
           <UInput v-model="state.email" type="email" size="lg" autocomplete="email" class="w-full" />
         </UFormField>
 
-        <UFormField v-if="emailChanged && needsPassword" name="currentPassword" label="Mật khẩu hiện tại" description="Firebase yêu cầu xác nhận khi đổi email.">
+        <UFormField v-if="emailChanged && needsPassword" name="currentPassword" label="Mật khẩu hiện tại">
           <PasswordInput v-model="state.currentPassword" autocomplete="current-password" />
         </UFormField>
-        <p v-else-if="emailChanged" class="text-xs text-gray-500 dark:text-gray-400">
-          Tài khoản Google: có thể hiện cửa sổ đăng nhập lại để xác nhận.
-        </p>
       </UForm>
     </template>
     <template #footer="{ close }">

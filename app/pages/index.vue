@@ -166,7 +166,6 @@ const UNDO_TOAST_MS = 12_000;
 const undoToast = (title: string, undo: () => Promise<void>) =>
   toast.add({
     title,
-    description: "Kéo nhầm? Bấm Hoàn tác để bỏ tích.",
     color: "success",
     icon: "i-lucide-circle-check",
     duration: UNDO_TOAST_MS,
@@ -255,13 +254,10 @@ const onDeleteSide = async (task: SideTask) => {
         </div>
         <!-- Cấp độ theo số rương đã mở -->
         <div class="w-32 shrink-0 text-right">
-          <p class="truncate text-xs font-bold text-violet-700 dark:text-violet-300">Cấp {{ level.level }} · {{ level.title }}</p>
+          <p class="truncate text-xs font-bold text-violet-700 dark:text-violet-300">Cấp {{ level.level }}</p>
           <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-violet-100 dark:bg-violet-950">
             <div class="h-full rounded-full bg-violet-500 transition-[width] duration-700" :style="{ width: `${Math.round(level.progress * 100)}%` }" />
           </div>
-          <p class="mt-0.5 text-[11px] tabular-nums text-gray-500 dark:text-gray-400">
-            {{ level.nextAt ? `${level.chests}/${level.nextAt} rương` : `${level.chests} rương` }}
-          </p>
         </div>
       </div>
 
@@ -271,7 +267,6 @@ const onDeleteSide = async (task: SideTask) => {
           <div class="flex flex-wrap items-center gap-x-2">
             <p class="text-2xl font-bold">
               {{ doneMain.length }}/{{ mainToday.length }}
-              <span class="text-base font-normal text-gray-500 dark:text-gray-400">nhiệm vụ chính</span>
             </p>
             <!-- Chuỗi ngày liên tiếp hoàn thành đủ (hôm nay chưa xong thì vẫn giữ chuỗi tới hôm qua) -->
             <UBadge
@@ -280,7 +275,7 @@ const onDeleteSide = async (task: SideTask) => {
               icon="i-lucide-flame"
               :title="`Chuỗi ${fullStreak} ngày liên tiếp hoàn thành đủ nhiệm vụ chính`"
             >
-              {{ fullStreak }} ngày
+              {{ fullStreak }}
             </UBadge>
           </div>
           <div
@@ -298,12 +293,6 @@ const onDeleteSide = async (task: SideTask) => {
               :class="['h-2.5 flex-1 rounded-full transition-colors duration-500', i <= doneMain.length ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700']"
             />
           </div>
-          <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-            <template v-if="!allDone && rewardToday">+{{ formatMoney(rewardToday) }} khi xong hết</template>
-            <template v-else-if="!allDone">Mở rương khi xong hết</template>
-            <template v-else-if="chestOpened">Đã mở rương</template>
-            <b v-else class="text-amber-600 dark:text-amber-400">Chạm rương để mở</b>
-          </p>
         </div>
         <button
           type="button"
@@ -320,17 +309,11 @@ const onDeleteSide = async (task: SideTask) => {
       <div class="mt-3 grid grid-cols-2 gap-2">
         <div class="flex items-center gap-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 px-3 py-2">
           <UIcon name="i-lucide-coins" class="h-5 w-5 shrink-0 text-amber-500" />
-          <div class="min-w-0">
-            <p class="text-[11px] text-gray-500 dark:text-gray-400">Tiền thưởng</p>
-            <p class="truncate font-bold tabular-nums text-amber-700 dark:text-amber-300">{{ formatMoney(walletReward) }}</p>
-          </div>
+          <p class="truncate font-bold tabular-nums text-amber-700 dark:text-amber-300" title="Tiền thưởng">{{ formatMoney(walletReward) }}</p>
         </div>
         <div class="flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-950/40 px-3 py-2">
           <UIcon name="i-lucide-wallet" class="h-5 w-5 shrink-0 text-red-500" />
-          <div class="min-w-0">
-            <p class="text-[11px] text-gray-500 dark:text-gray-400">Tổng nợ</p>
-            <p class="truncate font-bold tabular-nums text-red-600 dark:text-red-400">{{ formatMoney(workspace?.penaltyTotal ?? 0) }}</p>
-          </div>
+          <p class="truncate font-bold tabular-nums text-red-600 dark:text-red-400" title="Tổng nợ">{{ formatMoney(workspace?.penaltyTotal ?? 0) }}</p>
         </div>
       </div>
 
@@ -340,7 +323,7 @@ const onDeleteSide = async (task: SideTask) => {
       </p>
       <p v-else-if="pendingMain.length" class="mt-3 text-sm text-amber-700 dark:text-amber-300">
         <UIcon name="i-lucide-triangle-alert" class="mr-1 inline-block h-4 w-4 align-text-bottom" />
-        Còn {{ pendingMain.length }} việc · bỏ lỡ mất {{ formatMoney(atRisk) }}
+        −{{ formatMoney(atRisk) }} nếu bỏ lỡ
       </p>
     </section>
 
@@ -348,12 +331,10 @@ const onDeleteSide = async (task: SideTask) => {
     <section v-if="nextTask" class="flex items-center gap-3 rounded-2xl bg-primary/10 p-4 ring-1 ring-primary/20">
       <UIcon name="i-lucide-circle" class="h-6 w-6 shrink-0 text-primary" />
       <div class="min-w-0 flex-1">
-        <p class="text-xs font-semibold uppercase tracking-wide text-primary">Việc tiếp theo</p>
         <p class="truncate font-bold">{{ nextTask.title }}</p>
-        <p class="text-sm text-gray-600 dark:text-gray-400">
+        <p v-if="nextTask.deadlineTime || nextTask.reminderTime" class="text-sm text-gray-600 dark:text-gray-400">
           <template v-if="nextTask.deadlineTime">Hạn {{ nextTask.deadlineTime }}</template>
-          <template v-else-if="nextTask.reminderTime">Nhắc lúc {{ nextTask.reminderTime }}</template>
-          <template v-else>Trước nửa đêm</template>
+          <template v-else>{{ nextTask.reminderTime }}</template>
         </p>
       </div>
       <UButton v-if="canTickMain" size="lg" icon="i-lucide-check" @click="onCompleteRequest(nextTask)">Xong</UButton>
@@ -365,8 +346,7 @@ const onDeleteSide = async (task: SideTask) => {
       class="flex items-center gap-3 rounded-2xl bg-linear-to-r from-amber-400 to-orange-500 p-4 text-white shadow-sm"
     >
       <div class="min-w-0 flex-1">
-        <p class="text-lg font-bold">Xong hết hôm nay!</p>
-        <p v-if="rewardToday" class="text-sm text-amber-50">+{{ formatMoney(rewardToday) }} đang chờ</p>
+        <p class="text-lg font-bold">Xong hết hôm nay</p>
       </div>
       <UButton size="lg" color="neutral" variant="solid" icon="i-lucide-gift" class="bg-white font-bold text-orange-600 hover:bg-amber-50" @click="chestModal = true">
         Mở rương
@@ -376,8 +356,8 @@ const onDeleteSide = async (task: SideTask) => {
       <p class="flex items-center gap-2 text-lg font-bold">
         <UIcon name="i-lucide-party-popper" class="h-6 w-6" />
         Xong hết hôm nay
+        <span class="ml-auto flex items-center gap-1 text-base font-semibold"><UIcon name="i-lucide-flame" class="h-5 w-5" />{{ fullStreak }}</span>
       </p>
-      <p class="mt-1 text-sm text-green-50">Chuỗi {{ fullStreak }} ngày</p>
     </section>
     <ChestRewardModal
       v-model:open="chestModal"

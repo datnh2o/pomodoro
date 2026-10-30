@@ -34,8 +34,6 @@ export interface Workspace {
   /** Ngày cuối cùng đã chốt, null nếu chưa chốt ngày nào */
   lastClosedDate: string | null;
   members: Record<string, MemberPermissions>;
-  /** Mã link chia sẻ chỉ đọc (/share/{token}); null = tắt */
-  shareToken?: string | null;
   /** Giờ nhắc cuối ngày (HH:mm) nếu còn nhiệm vụ chính chưa xong; mặc định 21:00 */
   eveningReminderTime?: string | null;
   /** Giờ nhắc buổi sáng liệt kê việc hôm nay; null = tắt. Mặc định 07:00 */
@@ -48,12 +46,6 @@ export interface Workspace {
   restLimitPerMonth?: number;
   /** Chỉ được khai nghỉ hôm nay trước giờ này (mặc định 10:00) */
   restCutoffTime?: string;
-  /** Email người giám sát nhận tổng kết tuần; null = tắt */
-  supervisorEmail?: string | null;
-  /** Giờ gửi tổng kết tuần vào Chủ nhật (mặc định 20:00) */
-  weeklyReportTime?: string;
-  /** Khóa tuần đã gửi gần nhất, tránh gửi trùng */
-  lastWeeklyReportKey?: string | null;
   /**
    * Chế độ nghỉ: các ngày (YYYY-MM-DD) không tính nhiệm vụ chính, không phạt, không đứt chuỗi.
    * Chỉ được thêm cho hôm nay hoặc tương lai (không khai nghỉ lùi để tránh né phạt).
@@ -118,7 +110,6 @@ export const DEFAULT_EVENING_REMINDER = "21:00";
 export const DEFAULT_MORNING_REMINDER = "07:00";
 export const DEFAULT_REST_LIMIT = 3;
 export const DEFAULT_REST_CUTOFF = "10:00";
-export const DEFAULT_WEEKLY_REPORT_TIME = "20:00";
 /** Nhắc trước hạn bao nhiêu phút */
 export const DEADLINE_WARNING_MINUTES = 30;
 

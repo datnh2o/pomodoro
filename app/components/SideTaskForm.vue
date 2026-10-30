@@ -48,16 +48,16 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="task ? 'Sửa nhiệm vụ phụ' : 'Thêm nhiệm vụ phụ'" description="Không tính vào tiền phạt. Chưa xong thì tự hiện lại ngày hôm sau.">
+  <UModal v-model:open="open" :title="task ? 'Sửa nhiệm vụ phụ' : 'Thêm nhiệm vụ phụ'">
     <template #body>
       <UForm id="side-task-form" :state="state" :validate="validate" class="flex flex-col gap-4" @submit="onSubmit">
-        <UFormField name="title" label="Tên nhiệm vụ" required>
+        <UFormField name="title" label="Tên" required>
           <UInput v-model="state.title" size="lg" maxlength="200" autofocus class="w-full" />
         </UFormField>
         <UFormField name="note" label="Ghi chú">
           <UTextarea v-model="state.note" :rows="2" placeholder="Tùy chọn" maxlength="300" class="w-full" />
         </UFormField>
-        <UFormField name="reminderTime" label="Giờ nhắc" description="Nhắc mỗi ngày vào giờ này cho tới khi xong">
+        <UFormField name="reminderTime" label="Giờ nhắc">
           <UInput v-model="state.reminderTime" type="time" class="w-36" />
         </UFormField>
       </UForm>

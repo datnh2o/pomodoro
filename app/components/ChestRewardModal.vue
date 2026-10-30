@@ -99,10 +99,7 @@ const coins = Array.from({ length: 12 }, (_, i) => {
           </button>
 
           <p id="chest-modal-title" class="px-6 text-xl font-black uppercase tracking-wide drop-shadow">
-            {{ phase === "open" ? "Phần thưởng!" : "Xong nhiệm vụ!" }}
-          </p>
-          <p class="mt-1 text-sm text-amber-50">
-            {{ phase === "open" ? "Xong hết hôm nay" : "Chạm để mở" }}
+            {{ phase === "open" ? "Phần thưởng" : "Xong hết" }}
           </p>
 
           <!-- Chừa chỗ phía trên cho nắp bật lên khi mở -->

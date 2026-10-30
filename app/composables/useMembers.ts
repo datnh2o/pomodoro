@@ -11,7 +11,7 @@ export interface SubAccountInput {
   edit: boolean;
 }
 
-/** Quản lý thành viên của workspace (chỉ owner) và link chia sẻ chỉ đọc. */
+/** Quản lý thành viên của workspace (chỉ owner). */
 export const useMembers = () => {
   const { $firebase } = useNuxtApp();
   const { workspace } = useWorkspace();
@@ -81,22 +81,5 @@ export const useMembers = () => {
   };
 
   // ---- Link chia sẻ ----
-  const shareUrl = computed(() => {
-    const token = workspace.value?.shareToken;
-    if (!token || !import.meta.client) return null;
-    return `${window.location.origin}/share/${token}`;
-  });
-
-  const enableShareLink = async () => {
-    const bytes = new Uint8Array(16);
-    crypto.getRandomValues(bytes);
-    const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-    await updateDoc(wsRef(), { shareToken: token });
-  };
-
-  const disableShareLink = async () => {
-    await updateDoc(wsRef(), { shareToken: null });
-  };
-
-  return { members, createSubAccount, updateMember, removeMember, shareUrl, enableShareLink, disableShareLink };
+  return { members, createSubAccount, updateMember, removeMember };
 };

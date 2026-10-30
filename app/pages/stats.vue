@@ -91,8 +91,6 @@ const completionRate = computed(() =>
   stats.value && stats.value.countedDays ? Math.round((stats.value.fullDays / stats.value.countedDays) * 100) : null
 );
 const rate = (done: number, total: number) => (total ? `${Math.round((done / total) * 100)}%` : "–");
-const signedMoney = (amount: number) => `${amount >= 0 ? "+" : "−"}${formatMoney(Math.abs(amount))}`;
-const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (workspace.value?.penaltyTotal ?? 0));
 </script>
 
 <template>
@@ -127,7 +125,6 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
           label="Tiền thưởng"
           compact
           :value="formatMoneyShort(stats.reward)"
-          :hint="`${stats.rewardDays} rương`"
           :tone="stats.reward ? 'good' : 'neutral'"
           icon="i-lucide-coins"
         />
@@ -174,24 +171,11 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
         />
       </section>
 
-      <!-- Từ trước tới nay (các ngày đã chốt) -->
-      <section v-if="workspace" class="rounded-xl bg-white dark:bg-gray-900 p-3 text-sm shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
-        <p class="text-xs text-gray-500 dark:text-gray-400">Từ trước tới nay</p>
-        <div class="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <span>Thưởng <b class="tabular-nums text-amber-700 dark:text-amber-300">{{ formatMoney(workspace.rewardTotal ?? 0) }}</b> ({{ workspace.rewardDays ?? 0 }} rương)</span>
-          <span>Phạt <b class="tabular-nums text-red-600 dark:text-red-400">{{ formatMoney(workspace.penaltyTotal) }}</b></span>
-          <span>
-            Chênh lệch
-            <b :class="['tabular-nums', allTimeBalance >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-600 dark:text-red-400']">{{ signedMoney(allTimeBalance) }}</b>
-          </span>
-        </div>
-      </section>
-
       <!-- Theo từng nhiệm vụ -->
       <section>
-        <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Theo nhiệm vụ chính</h2>
+        <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Nhiệm vụ</h2>
         <div v-if="!stats.perTask.length" class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-5 text-center text-sm text-gray-500 dark:text-gray-400">
-          Chưa có ngày nào đã qua trong kỳ này.
+          Chưa có dữ liệu
         </div>
         <div v-else class="overflow-hidden rounded-xl bg-white dark:bg-gray-900 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
           <table class="w-full text-sm">
@@ -206,7 +190,7 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
               <tr v-for="row in stats.perTask" :key="row.lineageId">
                 <td class="px-3 py-2">
                   <p class="font-medium">{{ row.title }}</p>
-                  <p v-if="row.missed" class="text-xs text-red-600 dark:text-red-400">Bỏ lỡ {{ row.missed }} lần</p>
+                  <p v-if="row.missed" class="text-xs text-red-600 dark:text-red-400">Lỡ {{ row.missed }}</p>
                 </td>
                 <td class="px-2 py-2 text-right tabular-nums">{{ row.completed }}/{{ row.scheduled }}</td>
                 <td class="px-3 py-2 text-right tabular-nums">{{ rate(row.completed, row.scheduled) }}</td>

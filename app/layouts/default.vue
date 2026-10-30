@@ -151,7 +151,7 @@ const isPomodoro = computed(() => route.path === "/pomodoro");
 
     <div v-if="!online" class="bg-amber-500 px-4 py-1.5 text-center text-sm font-medium text-white">
       <UIcon name="i-lucide-wifi-off" class="mr-1 inline-block h-4 w-4 align-text-bottom" />
-      Đang ngoại tuyến. Thay đổi sẽ tự đồng bộ khi có mạng.
+      Ngoại tuyến
     </div>
 
     <main class="pb-32">

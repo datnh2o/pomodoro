@@ -193,16 +193,16 @@ const showPeriodHeader = computed(() => selectedGroups.value.length > 1 || selec
       <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ formatDateVi(selected) }}</h3>
       <div v-if="loading" class="py-4 text-center text-gray-400">Đang tải...</div>
       <template v-else>
-        <p v-if="selectedIsRest" class="mb-2 text-sm text-sky-700 dark:text-sky-300">Ngày nghỉ: không tính nhiệm vụ chính.</p>
+        <p v-if="selectedIsRest" class="mb-2 text-sm text-sky-700 dark:text-sky-300">Ngày nghỉ</p>
         <p v-if="selectedSummary?.reward" class="mb-2 text-sm text-amber-700 dark:text-amber-300">
           <UIcon name="i-lucide-coins" class="mr-0.5 inline-block h-4 w-4 align-text-bottom" />
-          Xong hết nhiệm vụ chính, mở rương +{{ formatMoney(selectedSummary.reward) }}.
+          +{{ formatMoney(selectedSummary.reward) }}
         </p>
         <p v-if="selectedSummary?.penalty" class="mb-2 text-sm text-red-600 dark:text-red-400">
-          Mất {{ formatMoney(selectedSummary.penalty) }} vì bỏ lỡ {{ selectedSummary.scheduled - selectedSummary.completed }} việc<template v-if="(selectedDay?.multiplier ?? 1) > 1">, phạt ×{{ selectedDay?.multiplier }} do lỡ liên tiếp</template>.
+          −{{ formatMoney(selectedSummary.penalty) }}<template v-if="(selectedDay?.multiplier ?? 1) > 1"> (×{{ selectedDay?.multiplier }})</template>
         </p>
         <div v-if="!selectedMain.length && !selectedSide.length" class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-5 text-center text-sm text-gray-500 dark:text-gray-400">
-          Không có nhiệm vụ nào trong ngày này.
+          Trống
         </div>
         <div v-else class="flex flex-col gap-2">
         <template v-for="group in selectedGroups" :key="group.key">
@@ -219,8 +219,7 @@ const showPeriodHeader = computed(() => selectedGroups.value.length > 1 || selec
               <UIcon :name="row.done ? 'i-lucide-circle-check' : 'i-lucide-circle-x'" :class="['h-5 w-5 shrink-0', row.done ? 'text-green-600' : 'text-red-500']" />
               <span :class="['font-medium', !row.done && 'text-gray-500 dark:text-gray-400']">{{ row.task.title }}</span>
               <span v-if="slotTimeOf(row.task)" class="text-xs text-gray-400">{{ slotTimeOf(row.task) }}</span>
-              <span class="ml-auto text-xs text-gray-400">{{ row.done ? "Đã làm" : selected < today ? "Bỏ lỡ" : "Chưa làm" }}</span>
-              <UButton v-if="row.done && canUntickMain" size="xs" color="neutral" variant="outline" icon="i-lucide-undo-2" @click="onUntickMain(row.task)">Bỏ tích</UButton>
+              <UButton v-if="row.done && canUntickMain" class="ml-auto" size="xs" color="neutral" variant="outline" icon="i-lucide-undo-2" @click="onUntickMain(row.task)">Bỏ tích</UButton>
             </div>
           </li>
           <li v-for="task in group.side" :key="task.id" class="rounded-xl bg-white dark:bg-gray-900 p-3 text-sm shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">

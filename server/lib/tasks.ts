@@ -3,7 +3,7 @@ import { isMainTask, isSideTask, normalizeTask, type Task } from "../../shared/u
 
 /**
  * Chỉ đọc nhiệm vụ còn dùng tới, không đọc cả bộ sưu tập (việc phụ đã xong tích lũy mãi, mà job nhắc
- * chạy mỗi phút và widget gọi nhiều lần mỗi ngày trên gói Spark chỉ có 50K lượt đọc/ngày):
+ * chạy mỗi phút trên gói Spark chỉ có 50K lượt đọc/ngày):
  *  - nhiệm vụ chính còn hiệu lực (endsOn == null) hoặc ngừng sau ngày `since` (vẫn có lịch từ `since`)
  *  - việc phụ chưa xong (doneDate == null)
  * Mỗi truy vấn lọc một trường nên dùng index tự động, không cần tạo composite index.

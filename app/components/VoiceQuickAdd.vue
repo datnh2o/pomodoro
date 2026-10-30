@@ -18,7 +18,7 @@ const formOpen = ref(false);
 const addTitle = async (title: string) => {
   const id = await createSideTask({ title });
   toast.add({
-    title: "Đã thêm nhiệm vụ phụ",
+    title: "Đã thêm",
     description: title,
     color: "success",
     icon: "i-lucide-mic",
@@ -54,7 +54,7 @@ const start = async () => {
   try {
     const text = await listenOnce();
     if (!text) {
-      toast.add({ title: "Không nghe thấy gì", description: "Bấm mic rồi nói ngay.", color: "warning", icon: "i-lucide-mic-off" });
+      toast.add({ title: "Không nghe thấy gì", color: "warning", icon: "i-lucide-mic-off" });
       return;
     }
     busy.value = true;
@@ -70,7 +70,7 @@ const start = async () => {
 const onFormSave = async (input: Required<SideTaskInput>) => {
   try {
     await createSideTask(input);
-    toast.add({ title: "Đã thêm nhiệm vụ phụ", description: input.title, color: "success" });
+    toast.add({ title: "Đã thêm", description: input.title, color: "success" });
   } catch (error) {
     showError("Không thêm được", error);
   }

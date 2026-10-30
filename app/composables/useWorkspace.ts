@@ -66,7 +66,6 @@ export const useWorkspace = () => {
         penaltyTotal: 0,
         createdDate: todayKey(),
         lastClosedDate: null,
-        shareToken: null,
         members: {
           [current.uid]: { ...OWNER_PERMISSIONS, displayName: current.displayName, email: current.email },
         },
@@ -160,23 +159,6 @@ export const useWorkspace = () => {
     await updateDoc(doc($firebase.firestore, "workspaces", ws.id), { restDays: arrayUnion(date) });
   };
 
-  /** Cập nhật các tùy chọn kỷ luật/nhắc nhở (chỉ owner, rules kiểm soát) */
-  const updateSettings = async (
-    patch: Partial<
-      Pick<
-        Workspace,
-        | "restLimitPerMonth"
-        | "restCutoffTime"
-        | "morningReminderTime"
-        | "supervisorEmail"
-        | "weeklyReportTime"
-      >
-    >
-  ) => {
-    if (!workspace.value) return;
-    await updateDoc(doc($firebase.firestore, "workspaces", workspace.value.id), { ...patch });
-  };
-
   const removeRestDay = async (date: string) => {
     if (!workspace.value) return;
     if (date < todayKey()) throw new Error("Ngày đã qua không sửa được.");
@@ -197,6 +179,6 @@ export const useWorkspace = () => {
   return {
     workspace, loading, permissions, isOwner, can, bind, unbind,
     updatePenaltySettings, updateEveningReminder, addRestDay, removeRestDay, updateOwnMemberInfo,
-    restDaysInMonth, updateSettings,
+    restDaysInMonth,
   };
 };

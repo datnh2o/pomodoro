@@ -11,9 +11,6 @@ export default async () => {
       vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
       vapidPrivateKey: process.env.NUXT_VAPID_PRIVATE_KEY ?? "",
       vapidSubject: process.env.NUXT_VAPID_SUBJECT ?? "",
-      resendApiKey: process.env.NUXT_RESEND_API_KEY ?? "",
-      reportFrom: process.env.NUXT_REPORT_FROM ?? "",
-      appUrl: process.env.NUXT_PUBLIC_APP_URL ?? process.env.URL ?? "",
     });
     console.log("[reminders]", JSON.stringify(result));
     return new Response(JSON.stringify(result), { headers: { "content-type": "application/json" } });

@@ -144,6 +144,12 @@ lên lịch nhiệm vụ chính, không phạt, không đứt streak, không g�
 - Rules: thành viên có quyền `add` được ghi thêm `rewardTotal`, `rewardDays` khi chốt ngày, nhưng không ghi
   được `chestOpenedAt`.
 
+### Tối giản (2026-10-30)
+- Gỡ: widget Scriptable (`/api/widget`), link chia sẻ chỉ đọc (`/api/share`, `shareToken`), email tổng kết tuần
+  (Resend, `supervisorEmail`), mục "Kỷ luật & giám sát" (phạt tăng dần / hạn mức nghỉ / nhắc sáng dùng mặc định
+  trong code), Cloudinary. Service account chỉ còn phục vụ job chốt ngày + nhắc đẩy.
+- Cắt gần hết chữ hướng dẫn/mô tả; thời tiết chỉ icon + nhiệt độ; Cài đặt > Nhiệm vụ chính chia tab theo buổi.
+
 ### Bỏ ảnh chứng minh & bắt đầu lại (2026-10-26)
 - Gỡ toàn bộ ảnh chứng minh: không còn `requiresProof`, `proofs`, modal nộp ảnh, hàng đợi ảnh ngoại tuyến,
   chặn nộp lại ảnh. Tích là xong. Cloudinary gỡ hẳn (2026-10-30); ảnh đại diện chỉ lấy từ Google.

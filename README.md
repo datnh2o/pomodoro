@@ -21,7 +21,7 @@ Các lệnh khác: `npm run build` (build production ra `.output/`), `npm run pr
   `runtimeConfig.public.firebase` trong [nuxt.config.ts](nuxt.config.ts).
 - Firestore Security Rules nằm ở [firestore.rules](firestore.rules): dữ liệu theo workspace, thành viên
   có quyền xem / thêm / sửa. Deploy bằng `npx firebase-tools deploy --only firestore:rules` hoặc dán vào Firebase Console.
-- Link chia sẻ và nhắc đẩy cần server: `NUXT_FIREBASE_SERVICE_ACCOUNT` (service account JSON),
+- Nhắc đẩy và chốt ngày trên server cần `NUXT_FIREBASE_SERVICE_ACCOUNT` (service account JSON),
   khóa VAPID (`NUXT_PUBLIC_VAPID_PUBLIC_KEY`, `NUXT_VAPID_PRIVATE_KEY`, `NUXT_VAPID_SUBJECT`).
   Trên Netlify, `netlify/functions/reminders.mts` chạy mỗi phút để gửi nhắc; nơi khác gọi
   `/api/cron/reminders` với header `x-cron-secret` (`NUXT_CRON_SECRET`) bằng cron ngoài.
@@ -42,10 +42,10 @@ app/
                 ChestRewardModal, SubAccountForm, TimerCard, StatTile, AppTabBar, Icons/*
   composables/  useAuth, useWorkspace, useTasks, useDay, useHistory, useMembers, useRestart,
                 usePush, useSpeech, useReminders, usePomodoro, useMode
-  pages/        index (Hôm nay), journal, stats, pomodoro, settings, login, share/[token]
+  pages/        index (Hôm nay), journal, stats, pomodoro, settings, login
   plugins/      firebase.client
 shared/utils/   dates, models, stats (dùng chung app + server)
-server/         api/share/[token], api/cron/reminders, lib/reminders
+server/         api/cron/reminders, lib/reminders
 netlify/        functions/reminders.mts (scheduled, mỗi phút)
 public/         icons, push-handler.js, alert.mp3, rain.mp3
 ```

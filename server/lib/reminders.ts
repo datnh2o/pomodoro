@@ -7,7 +7,6 @@ import {
   DEADLINE_WARNING_MINUTES,
   DEFAULT_EVENING_REMINDER,
   DEFAULT_MORNING_REMINDER,
-  DEFAULT_WEEKLY_REPORT_TIME,
   isRestDay,
   isScheduledOn,
   isSidePendingOn,
@@ -18,16 +17,13 @@ import {
   type Task,
   type Workspace,
 } from "../../shared/utils/models";
-import { MAX_PENALTY_MULTIPLIER, nextDayToClose, planDayClose, weekKeyOf } from "../../shared/utils/penalty";
-import { computeStats, normalizeDay, type DayMap } from "../../shared/utils/stats";
-import { APP_NAME } from "../../shared/utils/app";
+import { MAX_PENALTY_MULTIPLIER, nextDayToClose, planDayClose } from "../../shared/utils/penalty";
 import { loadTasks } from "./tasks";
 
 /**
  * Job chạy mỗi phút (Netlify Scheduled Function hoặc /api/cron/reminders):
  *  1. Chốt các ngày đã qua cho mọi workspace (phạt, phạt tăng dần, chuỗi lỡ).
  *  2. Gửi nhắc đẩy: tới giờ việc, sắp hết hạn, buổi sáng, cuối ngày, được giao việc.
- *  3. Chủ nhật: gửi email tổng kết tuần cho người giám sát (qua Resend) nếu cấu hình.
  * Không phụ thuộc Nitro để Netlify Function import được trực tiếp.
  */
 export interface ReminderEnv {
@@ -36,12 +32,6 @@ export interface ReminderEnv {
   vapidPublicKey: string;
   vapidPrivateKey: string;
   vapidSubject: string;
-  /** Resend API key để gửi email tổng kết tuần (tùy chọn) */
-  resendApiKey?: string;
-  /** Địa chỉ gửi, vd "Daily Quest <onboarding@resend.dev>" */
-  reportFrom?: string;
-  /** URL app để chèn vào email (tùy chọn) */
-  appUrl?: string;
 }
 
 export interface ReminderResult {
@@ -49,7 +39,6 @@ export interface ReminderResult {
   workspacesChecked: number;
   daysClosed: number;
   sent: number;
-  emailsSent: number;
   removedSubscriptions: number;
   errors: string[];
 }
@@ -88,9 +77,6 @@ const minusMinutes = (hhmm: string, minutes: number) => {
 
 const formatMoney = (amount: number) => `${amount.toLocaleString("vi-VN")} ₫`;
 
-const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-/** Tên nhiệm vụ/bảng do người dùng nhập, phải escape trước khi chèn vào email HTML */
-const escapeHtml = (text: string) => text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]!);
 
 // ---------- 1. Chốt ngày ----------
 
@@ -133,57 +119,6 @@ const closePastDays = async (
   return closed;
 };
 
-// ---------- 3. Email tổng kết tuần ----------
-
-const sendWeeklyEmail = async (
-  env: ReminderEnv,
-  wsRef: DocumentReference,
-  ws: Workspace,
-  tasks: Task[],
-  today: string
-): Promise<boolean> => {
-  if (!env.resendApiKey || !env.reportFrom || !ws.supervisorEmail) return false;
-  const weekStart = weekKeyOf(today, weekdayOf, addDays);
-  const daysSnap = await wsRef.collection("days").where("date", ">=", weekStart).where("date", "<=", today).get();
-  const days: DayMap = {};
-  daysSnap.forEach((d) => {
-    days[d.id] = normalizeDay(d.id, d.data() as Partial<DayDoc>);
-  });
-  const stats = computeStats({ from: weekStart, to: today, days, tasks, earliest: ws.createdDate, today, restDays: ws.restDays });
-
-  const rows = stats.perTask
-    .map((t) => `<tr><td style="padding:4px 8px">${escapeHtml(t.title)}</td><td style="padding:4px 8px;text-align:right">${t.completed}/${t.scheduled}</td><td style="padding:4px 8px;text-align:right">${t.missed}</td></tr>`)
-    .join("");
-  const shareLine = ws.shareToken && env.appUrl ? `<p><a href="${escapeHtml(`${env.appUrl}/share/${ws.shareToken}`)}">Xem chi tiết</a></p>` : "";
-  const html = `
-    <div style="font-family:system-ui,sans-serif;max-width:560px">
-      <h2 style="margin:0 0 8px">Tổng kết tuần ${weekStart.slice(8, 10)}/${weekStart.slice(5, 7)} – ${today.slice(8, 10)}/${today.slice(5, 7)}</h2>
-      <p style="margin:0 0 12px;color:#555">${escapeHtml(ws.name)}</p>
-      <p><b>Tiền thưởng tuần này:</b> ${formatMoney(stats.reward)} (${stats.rewardDays} rương)<br>
-         <b>Tiền phạt tuần này:</b> ${formatMoney(stats.penalty)}<br>
-         <b>Ngày làm đủ:</b> ${stats.fullDays}/${stats.countedDays}<br>
-         <b>Lần bỏ lỡ:</b> ${stats.missedCount}<br>
-         <b>Tổng nợ hiện tại:</b> ${formatMoney(ws.penaltyTotal)}<br>
-         <b>Tổng thưởng hiện tại:</b> ${formatMoney(ws.rewardTotal ?? 0)}</p>
-      ${rows ? `<table style="border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:left;padding:4px 8px">Nhiệm vụ</th><th style="padding:4px 8px">Làm/Lịch</th><th style="padding:4px 8px">Bỏ lỡ</th></tr></thead><tbody>${rows}</tbody></table>` : ""}
-      ${shareLine}
-      <p style="color:#888;font-size:12px">Email tự động từ app ${APP_NAME}.</p>
-    </div>`;
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.resendApiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: env.reportFrom,
-      to: [ws.supervisorEmail],
-      subject: `[${ws.name}] Tổng kết tuần: phạt ${formatMoney(stats.penalty)}, làm đủ ${stats.fullDays}/${stats.countedDays} ngày`,
-      html,
-    }),
-  });
-  if (!res.ok) throw new Error(`Resend HTTP ${res.status}: ${await res.text()}`);
-  return true;
-};
-
 // ---------- Job chính ----------
 
 export async function runReminders(env: ReminderEnv, now: Date = new Date()): Promise<ReminderResult> {
@@ -199,7 +134,6 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
     workspacesChecked: 0,
     daysClosed: 0,
     sent: 0,
-    emailsSent: 0,
     removedSubscriptions: 0,
     errors: [],
   };
@@ -214,34 +148,15 @@ export async function runReminders(env: ReminderEnv, now: Date = new Date()): Pr
       const subscriptionsRef = wsDoc.ref.collection("pushSubscriptions");
       // Chỉ cần biết có thiết bị nào không (1 lượt đọc); danh sách đầy đủ đọc khi thật sự có tin để gửi
       const hasDevices = !(await subscriptionsRef.limit(1).get()).empty;
-      const isSunday = weekdayOf(today) === 0;
-      const weekKey = weekKeyOf(today, weekdayOf, addDays);
-      const wantsWeekly =
-        isSunday &&
-        !!ws.supervisorEmail &&
-        minutes.includes(ws.weeklyReportTime ?? DEFAULT_WEEKLY_REPORT_TIME) &&
-        ws.lastWeeklyReportKey !== weekKey;
-
       // Không có gì để làm thì bỏ qua sớm, đỡ tốn lượt đọc
-      if (!needsClosing && !hasDevices && !wantsWeekly) continue;
+      if (!needsClosing && !hasDevices) continue;
 
-      // Nhiệm vụ chính cần có lịch từ ngày sớm nhất phải xét: ngày chốt, đầu tuần (email) hoặc hôm nay
-      const since = [today, needsClosing ? nextDayToClose(ws) : today, wantsWeekly ? weekKey : today].sort()[0]!;
+      // Nhiệm vụ chính cần có lịch từ ngày sớm nhất phải xét: ngày chốt hoặc hôm nay
+      const since = needsClosing ? nextDayToClose(ws) : today;
       const { mainTasks, sideTasks } = await loadTasks(wsDoc.ref, since);
 
       if (needsClosing) {
         result.daysClosed += await closePastDays(db, wsDoc.ref, mainTasks, today);
-      }
-
-      if (wantsWeekly) {
-        try {
-          if (await sendWeeklyEmail(env, wsDoc.ref, ws, mainTasks, today)) {
-            result.emailsSent++;
-            await wsDoc.ref.update({ lastWeeklyReportKey: weekKey });
-          }
-        } catch (error) {
-          result.errors.push(`${ws.id}/weekly: ${(error as Error).message}`);
-        }
       }
 
       if (!hasDevices || isRestDay(ws.restDays, today)) continue;

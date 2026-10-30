@@ -78,20 +78,15 @@ export default defineNuxtConfig({
   // mặc định của bản build (giữ luồng Docker: build có .env thì chạy không cần env).
   // Khi chạy, biến môi trường NUXT_PUBLIC_FIREBASE_* (nếu có) vẫn ghi đè các mặc định này.
   runtimeConfig: {
-    // Chỉ server dùng: service account để API /api/share đọc Firestore cho link chia sẻ.
+    // Chỉ server dùng: service account cho job chốt ngày / nhắc đẩy (/api/cron/reminders).
     // Đặt qua biến môi trường NUXT_FIREBASE_SERVICE_ACCOUNT (chuỗi JSON của private key).
     firebaseServiceAccount: "",
     // Web Push: private key + subject (NUXT_VAPID_PRIVATE_KEY, NUXT_VAPID_SUBJECT), bí mật gọi cron tay.
     vapidPrivateKey: "",
     vapidSubject: "",
     cronSecret: "",
-    // Email tổng kết tuần qua Resend (tùy chọn)
-    resendApiKey: "",
-    reportFrom: "",
     public: {
       vapidPublicKey: process.env.NUXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
-      // URL app công khai (để chèn link vào email); trên Netlify có thể để trống, job dùng biến URL
-      appUrl: process.env.NUXT_PUBLIC_APP_URL ?? "",
       firebase: {
         apiKey: process.env.NUXT_PUBLIC_FIREBASE_API_KEY ?? "",
         authDomain: process.env.NUXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "",

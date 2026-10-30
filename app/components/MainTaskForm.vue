@@ -84,8 +84,8 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
   <UModal v-model:open="open" :title="task ? 'Sửa nhiệm vụ chính' : 'Thêm nhiệm vụ chính'">
     <template #body>
       <UForm id="main-task-form" :state="state" :validate="validate" class="flex flex-col gap-4" @submit="onSubmit">
-        <UFormField name="title" label="Tên nhiệm vụ" required>
-          <UInput v-model="state.title" size="lg" placeholder="Ví dụ: Tập gym" maxlength="120" autofocus class="w-full" />
+        <UFormField name="title" label="Tên" required>
+          <UInput v-model="state.title" size="lg" maxlength="120" autofocus class="w-full" />
         </UFormField>
 
         <UFormField name="note" label="Ghi chú">
@@ -125,10 +125,10 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
         </UFormField>
 
         <div class="grid grid-cols-2 gap-3">
-          <UFormField name="reminderTime" label="Giờ nhắc" description="Để trống nếu không nhắc">
+          <UFormField name="reminderTime" label="Giờ nhắc">
             <UInput v-model="state.reminderTime" type="time" class="w-full" />
           </UFormField>
-          <UFormField name="deadlineTime" label="Hạn trong ngày" description="Quá giờ là không tích được">
+          <UFormField name="deadlineTime" label="Hạn">
             <UInput v-model="state.deadlineTime" type="time" class="w-full" />
           </UFormField>
         </div>
@@ -138,8 +138,7 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
           color="info"
           variant="subtle"
           icon="i-lucide-calendar-clock"
-          title="Có hiệu lực từ ngày mai"
-          description="Đổi lịch hay hạn giờ không áp dụng cho hôm nay, để tránh sửa cho khỏi bị phạt."
+          title="Áp dụng từ ngày mai"
         />
       </UForm>
     </template>

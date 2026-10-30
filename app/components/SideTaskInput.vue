@@ -65,7 +65,7 @@ watch(interim, (text) => {
       v-model="title"
       class="flex-1"
       size="lg"
-      :placeholder="listening ? 'Đang nghe... nói đi' : 'Thêm nhiệm vụ phụ...'"
+      :placeholder="listening ? 'Đang nghe…' : 'Thêm việc phụ'"
       maxlength="200"
     />
     <UButton
@@ -84,8 +84,8 @@ watch(interim, (text) => {
       variant="outline"
       size="lg"
       icon="i-lucide-sliders-horizontal"
-      aria-label="Thêm với tùy chọn ảnh, giờ nhắc"
-      title="Tùy chọn: ảnh chứng minh, giờ nhắc, ghi chú"
+      aria-label="Tùy chọn"
+      title="Tùy chọn"
       @click="openOptions"
     />
     <UButton type="submit" size="lg" icon="i-lucide-plus" :disabled="!title.trim()" aria-label="Thêm" />
