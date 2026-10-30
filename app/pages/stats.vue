@@ -142,7 +142,6 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
           label="Chênh lệch"
           compact
           :value="`${stats.reward - stats.penalty > 0 ? '+' : ''}${formatMoneyShort(stats.reward - stats.penalty)}`"
-          hint="Thưởng − phạt"
           :tone="stats.reward - stats.penalty >= 0 ? 'good' : 'bad'"
           icon="i-lucide-scale"
         />
@@ -154,7 +153,7 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
           label="Chuỗi"
           compact
           :value="`${stats.streak} ngày`"
-          :hint="`Dài nhất trong kỳ: ${stats.longestStreak}`"
+          :hint="`Dài nhất: ${stats.longestStreak}`"
           :tone="stats.streak ? 'good' : 'neutral'"
           icon="i-lucide-flame"
         />
@@ -162,7 +161,7 @@ const allTimeBalance = computed(() => (workspace.value?.rewardTotal ?? 0) - (wor
           label="Ngày làm đủ"
           compact
           :value="completionRate === null ? '–' : `${completionRate}%`"
-          :hint="`${stats.fullDays}/${stats.countedDays} ngày, tính đến hôm qua`"
+          :hint="`${stats.fullDays}/${stats.countedDays} ngày`"
           :tone="completionRate !== null && completionRate >= 80 ? 'good' : 'neutral'"
           icon="i-lucide-calendar-check"
         />

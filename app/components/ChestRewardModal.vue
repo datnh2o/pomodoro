@@ -102,7 +102,7 @@ const coins = Array.from({ length: 12 }, (_, i) => {
             {{ phase === "open" ? "Phần thưởng!" : "Xong nhiệm vụ!" }}
           </p>
           <p class="mt-1 text-sm text-amber-50">
-            {{ phase === "open" ? "Xong hết nhiệm vụ chính của ngày" : "Chạm vào rương để mở" }}
+            {{ phase === "open" ? "Xong hết hôm nay" : "Chạm để mở" }}
           </p>
 
           <!-- Chừa chỗ phía trên cho nắp bật lên khi mở -->
@@ -141,12 +141,9 @@ const coins = Array.from({ length: 12 }, (_, i) => {
               </div>
               <p class="mt-1.5 text-xs text-amber-50">
                 <UIcon name="i-lucide-flame" class="mr-0.5 inline-block h-3.5 w-3.5 align-text-bottom" />
-                Chuỗi {{ streak }} ngày liên tiếp hoàn thành đủ
+                Chuỗi {{ streak }} ngày
               </p>
             </div>
-            <p v-if="amount > 0" class="mt-3 text-[11px] text-amber-50/90">
-              Tiền thưởng vào ví khi chốt ngày lúc 0h.
-            </p>
           </template>
 
           <UButton

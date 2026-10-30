@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { todayKey } from "#shared/utils/dates";
 import { APP_NAME } from "#shared/utils/app";
+import { initialOf } from "~/utils/avatar";
 
 const route = useRoute();
 const { user, ready, signOut } = useAuth();
@@ -138,6 +139,7 @@ const isPomodoro = computed(() => route.path === "/pomodoro");
             <UAvatar
               :src="user.photoURL ?? undefined"
               :alt="user.displayName ?? user.email ?? 'Tài khoản'"
+              :text="initialOf(user.displayName, user.email)"
               size="sm"
               referrerpolicy="no-referrer"
             />

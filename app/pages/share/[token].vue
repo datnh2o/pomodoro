@@ -130,7 +130,6 @@ const rate = computed(() => {
           </div>
         </section>
 
-        <p class="text-center text-xs text-gray-400">Cập nhật tối đa mỗi phút · Mức phạt {{ formatMoney(data.penaltyAmount) }}/nhiệm vụ</p>
       </div>
     </UContainer>
   </div>

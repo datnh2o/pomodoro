@@ -9,7 +9,6 @@ const settingsOpen = ref(false);
 
 const musicIcon = (s: MusicSource) => (s.url === null ? "i-lucide-volume-x" : s.live ? "i-lucide-radio" : "i-lucide-cloud-rain");
 const musicItems = MUSIC_SOURCES.map((s) => ({ label: s.name, value: s.id, icon: musicIcon(s) }));
-const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
 </script>
 
 <template>
@@ -47,11 +46,7 @@ const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
           <UIcon name="i-lucide-settings-2" class="h-4 w-4" />
         </button>
       </div>
-      <p class="text-xs text-white/75">
-        Phiên {{ cycle.focusIndex }}/{{ cycle.focusPerCycle }} ·
-        {{ cycle.nextBreak === "long" ? "nghỉ dài sắp tới" : `nghỉ dài sau ${settings.longBreakAfter - cycle.shortBreaksDone} lần nghỉ ngắn nữa` }}
-        · một vòng {{ cycle.totalMinutes }} phút
-      </p>
+      <p class="text-xs text-white/75">Phiên {{ cycle.focusIndex }}/{{ cycle.focusPerCycle }}</p>
     </div>
 
     <!-- Nguồn nhạc: tiếng mưa đi kèm app hoặc đài lofi trực tuyến. Phát/dừng và chuyển kênh độc lập với đồng hồ -->
@@ -84,14 +79,6 @@ const hostOf = (url: string) => new URL(url).hostname.replace(/^www\./, "");
           <UIcon name="i-lucide-skip-forward" class="h-5 w-5" />
         </button>
       </div>
-      <p class="text-xs text-white/75">
-        <template v-if="music.homepage">
-          Đài phát trực tuyến 24/7 ·
-          <a :href="music.homepage" target="_blank" rel="noopener" class="underline">{{ hostOf(music.homepage) }}</a>
-        </template>
-        <template v-else-if="music.url">Tiếng mưa đi kèm app, phát lặp lại</template>
-        <template v-else>Chỉ có chuông khi hết giờ</template>
-      </p>
     </div>
     <PomodoroSettingsModal v-model:open="settingsOpen" />
   </section>

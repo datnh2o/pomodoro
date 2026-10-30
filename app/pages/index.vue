@@ -299,9 +299,10 @@ const onDeleteSide = async (task: SideTask) => {
             />
           </div>
           <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-            <template v-if="!allDone">Xong hết để mở rương<template v-if="rewardToday"> +{{ formatMoney(rewardToday) }}</template></template>
-            <template v-else-if="chestOpened">Đã mở rương<template v-if="rewardToday"> +{{ formatMoney(rewardToday) }}</template></template>
-            <b v-else class="text-amber-600 dark:text-amber-400">Rương đã sẵn sàng, chạm để mở!</b>
+            <template v-if="!allDone && rewardToday">+{{ formatMoney(rewardToday) }} khi xong hết</template>
+            <template v-else-if="!allDone">Mở rương khi xong hết</template>
+            <template v-else-if="chestOpened">Đã mở rương</template>
+            <b v-else class="text-amber-600 dark:text-amber-400">Chạm rương để mở</b>
           </p>
         </div>
         <button
@@ -335,11 +336,11 @@ const onDeleteSide = async (task: SideTask) => {
 
       <p v-if="isRest" class="mt-3 text-sm text-sky-700 dark:text-sky-300">
         <UIcon name="i-lucide-palmtree" class="mr-1 inline-block h-4 w-4 align-text-bottom" />
-        Hôm nay là ngày nghỉ: không tính nhiệm vụ chính, không phạt, không đứt chuỗi.
+        Ngày nghỉ
       </p>
       <p v-else-if="pendingMain.length" class="mt-3 text-sm text-amber-700 dark:text-amber-300">
         <UIcon name="i-lucide-triangle-alert" class="mr-1 inline-block h-4 w-4 align-text-bottom" />
-        Còn {{ pendingMain.length }} việc, nếu bỏ lỡ sẽ mất {{ formatMoney(atRisk) }}
+        Còn {{ pendingMain.length }} việc · bỏ lỡ mất {{ formatMoney(atRisk) }}
       </p>
     </section>
 
@@ -364,8 +365,8 @@ const onDeleteSide = async (task: SideTask) => {
       class="flex items-center gap-3 rounded-2xl bg-linear-to-r from-amber-400 to-orange-500 p-4 text-white shadow-sm"
     >
       <div class="min-w-0 flex-1">
-        <p class="text-lg font-bold">Xong hết việc chính hôm nay!</p>
-        <p class="text-sm text-amber-50">Rương thưởng<template v-if="rewardToday"> +{{ formatMoney(rewardToday) }}</template> đang chờ bạn.</p>
+        <p class="text-lg font-bold">Xong hết hôm nay!</p>
+        <p v-if="rewardToday" class="text-sm text-amber-50">+{{ formatMoney(rewardToday) }} đang chờ</p>
       </div>
       <UButton size="lg" color="neutral" variant="solid" icon="i-lucide-gift" class="bg-white font-bold text-orange-600 hover:bg-amber-50" @click="chestModal = true">
         Mở rương
@@ -374,11 +375,9 @@ const onDeleteSide = async (task: SideTask) => {
     <section v-else-if="allDone" class="rounded-2xl bg-green-600 p-4 text-white shadow-sm">
       <p class="flex items-center gap-2 text-lg font-bold">
         <UIcon name="i-lucide-party-popper" class="h-6 w-6" />
-        Xong hết việc chính hôm nay
+        Xong hết hôm nay
       </p>
-      <p class="mt-1 text-sm text-green-50">
-        <template v-if="rewardToday">Đã nhận rương +{{ formatMoney(rewardToday) }}. </template>Chuỗi {{ fullStreak }} ngày liên tiếp hoàn thành đủ. Giữ nhịp nhé!
-      </p>
+      <p class="mt-1 text-sm text-green-50">Chuỗi {{ fullStreak }} ngày</p>
     </section>
     <ChestRewardModal
       v-model:open="chestModal"
@@ -399,18 +398,17 @@ const onDeleteSide = async (task: SideTask) => {
     <template #main>
     <!-- Nhiệm vụ chính -->
     <section>
-      <p class="mb-2 text-xs text-gray-400">Vuốt ngang một việc để hoàn thành. Quá hạn giờ là không tích được nữa. Việc đã xong xem trong Nhật ký.</p>
       <div v-if="!tasksReady" class="py-6 text-center text-gray-400">Đang tải...</div>
       <div v-else-if="isRest" class="rounded-xl border border-dashed border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 p-6 text-center text-sky-800 dark:text-sky-200">
-        Đang nghỉ. Nhiệm vụ chính sẽ quay lại vào ngày không nghỉ tiếp theo.
+        Đang nghỉ
       </div>
       <div v-else-if="!mainToday.length" class="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-gray-500 dark:text-gray-400">
-        Hôm nay không có nhiệm vụ chính.
-        <NuxtLink v-if="can('edit')" to="/settings" class="block pt-1 text-primary hover:underline">Thêm trong Cài đặt</NuxtLink>
+        Không có nhiệm vụ chính
+        <NuxtLink v-if="can('edit')" to="/settings" class="block pt-1 text-primary hover:underline">Thêm</NuxtLink>
       </div>
       <div v-else-if="allDone" class="rounded-xl border border-dashed border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/40 p-6 text-center text-green-800 dark:text-green-200">
-        Đã xong hết nhiệm vụ chính hôm nay.
-        <NuxtLink to="/journal" class="block pt-1 text-primary hover:underline">Xem lại trong Nhật ký</NuxtLink>
+        Xong hết
+        <NuxtLink to="/journal" class="block pt-1 text-primary hover:underline">Nhật ký</NuxtLink>
       </div>
       <div v-else class="flex flex-col gap-2">
         <template v-for="group in mainPendingGroups" :key="group.key">
@@ -439,7 +437,6 @@ const onDeleteSide = async (task: SideTask) => {
     <template #side>
     <!-- Nhiệm vụ phụ -->
     <section>
-      <p class="mb-2 text-xs text-gray-400">Vuốt từ trái sang để sửa, từ phải sang để xóa.</p>
       <div class="flex flex-col gap-2">
         <template v-for="group in sidePendingGroups" :key="group.key">
           <PeriodHeader
@@ -463,11 +460,11 @@ const onDeleteSide = async (task: SideTask) => {
           />
         </template>
         <p v-if="tasksReady && !sideToday.length" class="py-2 text-sm text-gray-400">
-          Chưa có nhiệm vụ phụ. Việc chưa xong sẽ tự dồn sang ngày hôm sau.
+          Chưa có việc phụ
         </p>
         <p v-else-if="tasksReady && !pendingSideCount" class="py-2 text-sm text-gray-400">
-          Đã xong hết việc phụ hôm nay. Xem lại trong
-          <NuxtLink to="/journal" class="text-primary hover:underline">Nhật ký</NuxtLink>.
+          Xong hết việc phụ ·
+          <NuxtLink to="/journal" class="text-primary hover:underline">Nhật ký</NuxtLink>
         </p>
         <SideTaskInput v-if="can('add')" class="mt-1" @add="onAddSide" @options="openSideOptions" />
       </div>

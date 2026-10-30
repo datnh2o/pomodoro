@@ -146,7 +146,7 @@ lên lịch nhiệm vụ chính, không phạt, không đứt streak, không g�
 
 ### Bỏ ảnh chứng minh & bắt đầu lại (2026-10-26)
 - Gỡ toàn bộ ảnh chứng minh: không còn `requiresProof`, `proofs`, modal nộp ảnh, hàng đợi ảnh ngoại tuyến,
-  chặn nộp lại ảnh. Tích là xong. Cloudinary chỉ còn dùng cho ảnh đại diện (`useImageUpload`).
+  chặn nộp lại ảnh. Tích là xong. Cloudinary gỡ hẳn (2026-10-30); ảnh đại diện chỉ lấy từ Google.
 - Cài đặt > Kỷ luật > "Bắt đầu lại từ hôm nay" (`useRestart`): `createdDate` = hôm nay, `lastClosedDate` = null,
   ví/rương/chuỗi lỡ về 0, nhiệm vụ chính `effectiveFrom` = hôm nay; rồi xóa hẳn `days` trước hôm nay, việc phụ đã
   xong trước hôm nay và bản nhiệm vụ chính đã ngừng. Rules: owner chỉ xóa được `days` có ngày < `createdDate`

@@ -14,6 +14,7 @@ import {
 } from "#shared/utils/models";
 import { addDays, formatDateVi, formatMoney, formatShortVi, formatWeekdays, todayKey, tomorrowKey } from "#shared/utils/dates";
 import { buildScriptableWidget, SCRIPTABLE_APP_URL } from "~/utils/scriptableWidget";
+import { initialOf } from "~/utils/avatar";
 
 const { user } = useAuth();
 const { workspace, can, isOwner, updatePenaltySettings } = useWorkspace();
@@ -496,8 +497,7 @@ const onChangePassword = async () => {
     <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bắt đầu lại</h2>
       <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-        Xóa hẳn lịch sử trước hôm nay ({{ formatShortVi(today) }}) và đếm lại từ đầu: chuỗi, tổng nợ, tiền thưởng, số rương.
-        Nhiệm vụ chính giữ nguyên, chỉ đổi ngày có hiệu lực; việc phụ đã xong trước hôm nay bị xóa.
+        Xóa lịch sử trước hôm nay, ví và chuỗi về 0. Nhiệm vụ giữ nguyên.
       </p>
       <p v-if="workspace?.createdDate" class="mb-3 text-xs text-gray-500 dark:text-gray-400">Đang tính từ {{ formatDateVi(workspace.createdDate) }}.</p>
       <UButton color="error" variant="outline" icon="i-lucide-rotate-ccw" :loading="restarting" @click="onRestart">Bắt đầu lại từ hôm nay</UButton>
@@ -507,8 +507,7 @@ const onChangePassword = async () => {
     <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Chế độ nghỉ</h2>
       <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-        Ngày nghỉ (ốm, đi xa) không tính nhiệm vụ chính, không phạt, không đứt chuỗi. Chỉ khai được cho
-        hôm nay hoặc ngày sau, không khai lùi.
+        Ngày nghỉ không tính nhiệm vụ, không phạt, không đứt chuỗi. Không khai lùi.
       </p>
       <div class="flex flex-wrap gap-2">
         <UButton color="neutral" variant="outline" size="sm" icon="i-lucide-palmtree" :disabled="upcomingRestDays.includes(today)" @click="onAddRest(today)">
@@ -587,7 +586,7 @@ const onChangePassword = async () => {
     <section v-if="isOwner" class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Link chia sẻ</h2>
       <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-        Ai có link sẽ xem được (không sửa) nhiệm vụ hôm nay, tổng nợ và thống kê tháng. Tắt là link hết hiệu lực.
+        Ai có link xem được tiến độ, không sửa được.
       </p>
       <USwitch :model-value="!!workspace?.shareToken" :disabled="shareBusy" label="Bật link chia sẻ" @update:model-value="onToggleShare" />
       <div v-if="shareUrl" class="mt-3 flex items-center gap-2">
@@ -606,8 +605,7 @@ const onChangePassword = async () => {
     <section class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Thông báo</h2>
       <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-        Khi app đang mở, tới giờ nhiệm vụ sẽ có nhắc trong app. Bật nhắc đẩy để được nhắc cả khi app đóng:
-        đúng giờ từng nhiệm vụ và một lần cuối ngày nếu còn việc chưa xong.
+        Nhắc đẩy khi app đóng: đúng giờ từng việc và cuối ngày.
       </p>
 
       <UAlert
@@ -640,8 +638,7 @@ const onChangePassword = async () => {
     <section class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Widget màn hình chính</h2>
       <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-        iPhone chưa cho web app có widget, nên dùng app miễn phí Scriptable: hiện tiến độ hôm nay, việc tiếp theo,
-        rương và tiền ngay trên màn hình chính hoặc màn hình khoá. Chạm vào widget là mở app.
+        Tiến độ hôm nay trên màn hình chính iPhone, qua app miễn phí Scriptable.
       </p>
       <template v-if="widgetScript">
         <ol class="flex list-decimal flex-col gap-1.5 pl-5 text-sm text-gray-700 dark:text-gray-300">
@@ -680,7 +677,7 @@ const onChangePassword = async () => {
     <section class="rounded-xl bg-white dark:bg-gray-900 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
       <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Tài khoản</h2>
       <div class="flex items-center gap-3">
-        <UAvatar :src="user?.photoURL ?? undefined" :alt="user?.displayName ?? 'Tài khoản'" size="xl" referrerpolicy="no-referrer" />
+        <UAvatar :src="user?.photoURL ?? undefined" :alt="user?.displayName ?? 'Tài khoản'" :text="initialOf(user?.displayName, user?.email)" size="xl" referrerpolicy="no-referrer" />
         <div class="min-w-0">
           <p class="truncate font-medium">{{ user?.displayName ?? "Chưa đặt tên" }}</p>
           <p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ user?.email }}</p>

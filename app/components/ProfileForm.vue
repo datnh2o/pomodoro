@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { FormError, FormSubmitEvent } from "@nuxt/ui";
+import { initialOf } from "~/utils/avatar";
 
 const open = defineModel<boolean>("open", { default: false });
 const emit = defineEmits<{ saved: [] }>();
 
 const { user, usesPassword, updateDisplayName, updatePhotoURL, changeEmail, refreshUser, googlePhotoURL } = useAuth();
 const { updateOwnMemberInfo } = useWorkspace();
-const { upload, isConfigured, thumbnailUrl } = useImageUpload();
 const { showError } = useErrorToast();
 const toast = useToast();
 
@@ -17,8 +17,6 @@ interface FormState {
 }
 
 const state = reactive<FormState>({ displayName: "", email: "", currentPassword: "" });
-const avatarFile = ref<File | null>(null);
-const avatarPreview = ref<string | null>(null);
 const saving = ref(false);
 const needsPassword = ref(false);
 
@@ -27,24 +25,12 @@ watch(open, (value) => {
   state.displayName = user.value?.displayName ?? "";
   state.email = user.value?.email ?? "";
   state.currentPassword = "";
-  avatarFile.value = null;
-  if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
-  avatarPreview.value = null;
   needsPassword.value = usesPassword();
 });
 
 const emailChanged = computed(() => state.email.trim().toLowerCase() !== (user.value?.email ?? "").toLowerCase());
 
-const onPickAvatar = (event: Event) => {
-  const file = (event.target as HTMLInputElement).files?.[0] ?? null;
-  (event.target as HTMLInputElement).value = "";
-  if (!file) return;
-  avatarFile.value = file;
-  if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
-  avatarPreview.value = URL.createObjectURL(file);
-};
-
-// Dùng ảnh Google: ghi ngay (không cần bấm Lưu), bỏ ảnh đang chọn để tải
+// Ảnh đại diện lấy từ Google: ghi ngay, không cần bấm Lưu
 const usingGoogle = ref(false);
 const useGoogleAvatar = async () => {
   usingGoogle.value = true;
@@ -53,9 +39,6 @@ const useGoogleAvatar = async () => {
     if (!url) throw new Error("Tài khoản Google này không có ảnh đại diện.");
     await updatePhotoURL(url);
     await refreshUser();
-    avatarFile.value = null;
-    if (avatarPreview.value) URL.revokeObjectURL(avatarPreview.value);
-    avatarPreview.value = null;
     toast.add({ title: "Đã dùng ảnh Google", color: "success" });
   } catch (error) {
     if ((error as { code?: string }).code === "auth/popup-closed-by-user") return;
@@ -80,11 +63,6 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
   if (!uid) return;
   saving.value = true;
   try {
-    if (avatarFile.value) {
-      if (!isConfigured.value) throw new Error("Chưa cấu hình Cloudinary để lưu ảnh đại diện.");
-      const image = await upload(avatarFile.value, `avatars/${uid}`);
-      await updatePhotoURL(thumbnailUrl(image.url, 256));
-    }
     if (event.data.displayName.trim() !== (user.value?.displayName ?? "")) {
       await updateDisplayName(event.data.displayName);
     }
@@ -112,24 +90,16 @@ const onSubmit = async (event: FormSubmitEvent<FormState>) => {
       <UForm id="profile-form" :state="state" :validate="validate" class="flex flex-col gap-4" @submit="onSubmit">
         <div class="flex items-center gap-4">
           <UAvatar
-            :src="avatarPreview ?? user?.photoURL ?? undefined"
+            :src="user?.photoURL ?? undefined"
             :alt="state.displayName || 'Ảnh đại diện'"
+            :text="initialOf(state.displayName, user?.email)"
             size="3xl"
             referrerpolicy="no-referrer"
           />
-          <div class="flex flex-col items-start gap-2">
-            <label class="cursor-pointer">
-              <span class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-gray-300 dark:ring-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-                <UIcon name="i-lucide-image-up" class="h-4 w-4" />
-                Đổi ảnh
-              </span>
-              <input type="file" accept="image/*" class="sr-only" @change="onPickAvatar" />
-            </label>
-            <UButton color="neutral" variant="outline" size="sm" :loading="usingGoogle" @click="useGoogleAvatar">
-              <IconsGoogle class="h-4 w-4" />
-              Dùng ảnh Google
-            </UButton>
-          </div>
+          <UButton color="neutral" variant="outline" size="sm" :loading="usingGoogle" @click="useGoogleAvatar">
+            <IconsGoogle class="h-4 w-4" />
+            Dùng ảnh Google
+          </UButton>
         </div>
 
         <UFormField name="displayName" label="Tên hiển thị" required>

@@ -101,12 +101,6 @@ export default defineNuxtConfig({
         appId: process.env.NUXT_PUBLIC_FIREBASE_APP_ID ?? "",
         measurementId: process.env.NUXT_PUBLIC_FIREBASE_MEASUREMENT_ID ?? "",
       },
-      // Ảnh đại diện tải thẳng từ trình duyệt lên Cloudinary bằng unsigned upload preset.
-      cloudinary: {
-        cloudName: process.env.NUXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "",
-        uploadPreset: process.env.NUXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? "",
-        folder: process.env.NUXT_PUBLIC_CLOUDINARY_FOLDER ?? "daily-tasks",
-      },
     },
   },
 });

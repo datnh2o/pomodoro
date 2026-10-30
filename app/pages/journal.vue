@@ -103,7 +103,6 @@ const STATUS_STYLE: Record<DaySummary["status"], { cell: string; label: string; 
   none: { cell: "bg-gray-50 dark:bg-gray-950 text-gray-400 ring-gray-200 dark:ring-gray-800", label: "Không có việc", icon: "i-lucide-minus" },
   future: { cell: "bg-white dark:bg-gray-900 text-gray-300 ring-gray-100", label: "", icon: "" },
 };
-const LEGEND = (["full", "partial", "missed", "rest", "none"] as const).map((k) => ({ key: k, ...STATUS_STYLE[k] }));
 
 // ---- Chi tiết ngày đã chọn ----
 const selectedDay = computed(() => mergedDays.value[selected.value]);
@@ -181,22 +180,11 @@ const showPeriodHeader = computed(() => selectedGroups.value.length > 1 || selec
         </template>
       </div>
 
-      <ul class="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
-        <li v-for="item in LEGEND" :key="item.key" class="flex items-center gap-1">
-          <span :class="['inline-block h-3 w-3 rounded ring-1', item.cell]" />
-          <UIcon :name="item.icon" class="h-3 w-3" />
-          {{ item.label }}
-        </li>
-        <li class="flex items-center gap-1">
-          <UIcon name="i-lucide-coins" class="h-3 w-3 text-amber-500" />
-          Có thưởng
-        </li>
-      </ul>
 
       <p v-if="stats" class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-        Tháng này: <b class="text-amber-700 dark:text-amber-300">{{ formatMoney(stats.reward) }}</b> tiền thưởng ({{ stats.rewardDays }} rương) ·
-        <b class="text-red-600 dark:text-red-400">{{ formatMoney(stats.penalty) }}</b> tiền phạt ·
-        <b>{{ stats.fullDays }}/{{ stats.countedDays }}</b> ngày làm đủ
+        <b class="text-amber-700 dark:text-amber-300">+{{ formatMoney(stats.reward) }}</b> ·
+        <b class="text-red-600 dark:text-red-400">−{{ formatMoney(stats.penalty) }}</b> ·
+        <b>{{ stats.fullDays }}/{{ stats.countedDays }}</b> ngày đủ
       </p>
     </section>
 
