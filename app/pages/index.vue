@@ -115,16 +115,10 @@ watch(allDone, (value) => {
   if (!value) chestModal.value = false;
 });
 
-// Badge số việc chưa xong trên icon app (iPhone: web app đã thêm ra màn hình chính)
-watch(
-  () => pendingMain.value.length + sideToday.value.filter((t) => isSidePendingOn(t, today.value)).length,
-  (count) => {
-    const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
-    if (count > 0) nav.setAppBadge?.(count).catch(() => {});
-    else nav.clearAppBadge?.().catch(() => {});
-  },
-  { immediate: true }
-);
+// Không hiện số trên icon app; xóa badge còn sót từ bản cũ trên máy đã thêm ra màn hình chính
+onMounted(() => {
+  (navigator as Navigator & { clearAppBadge?: () => Promise<void> }).clearAppBadge?.().catch(() => {});
+});
 
 // ---- Hai tab Chính / Phụ, nhãn kèm số việc chưa làm ----
 const tab = ref<"main" | "side">("main");

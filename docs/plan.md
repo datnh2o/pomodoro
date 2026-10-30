@@ -126,7 +126,7 @@ lên lịch nhiệm vụ chính, không phạt, không đứt streak, không g�
 - Chốt ngày trên server (job mỗi phút) với thuật toán dùng chung `shared/utils/penalty.ts`; phạt tăng
   dần theo chuỗi lỡ (×2, ×4 tối đa), lưu `multiplier` trên ngày và `missStreak` trên workspace.
 - Email tổng kết tuần cho người giám sát (Chủ nhật, qua Resend, tùy chọn).
-- Badge số việc trên icon app, nhắc buổi sáng, thẻ "Việc tiếp theo", ăn mừng khi xong hết kèm chuỗi
+- Nhắc buổi sáng (badge số việc trên icon đã bỏ 2026-10-30), thẻ "Việc tiếp theo", ăn mừng khi xong hết kèm chuỗi
   ngày không mất tiền, dark mode theo hệ thống + chọn trong Cài đặt, hộp xác nhận riêng, banner ngoại tuyến.
 
 ### Trò chơi hóa: rương thưởng & cấp độ (2026-10-19)
